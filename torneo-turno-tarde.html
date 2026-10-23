@@ -1,0 +1,2118 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>La banda del Turno Tarde</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<style>
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background:#EAF4FC; }
+  .cuadrito { width:16px; height:16px; border-radius:3px; display:inline-block; margin-right:2px; }
+  .foto-jugador { width:56px; height:56px; border-radius:50%; object-fit:cover; background:#1b2840; }
+
+  /* ===== Landing / Dashboard premium (solo Home) ===== */
+  .landing-dark {
+    background:
+      radial-gradient(circle at 15% 0%, rgba(34,211,238,0.12), transparent 40%),
+      radial-gradient(circle at 85% 10%, rgba(245,179,1,0.10), transparent 40%),
+      linear-gradient(180deg, #060B18 0%, #0B1220 40%, #0E1730 100%);
+    color: #E8EEFC;
+  }
+  .glass {
+    background: rgba(20, 30, 55, 0.55);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .glass-hover { transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease; }
+  .glass-hover:hover { transform: translateY(-4px); border-color: rgba(255,255,255,0.2); }
+
+  .foto-podio { width:76px; height:76px; border-radius:50%; object-fit:cover; background:#1b2840; }
+  .foto-podio-frame { padding:3px; border-radius:50%; }
+  .frame-oro { background: conic-gradient(from 0deg, #FFD700, #FFF6C4, #FFD700, #B8860B, #FFD700); box-shadow: 0 0 22px 2px rgba(255,215,0,0.55); }
+  .frame-plata { background: conic-gradient(from 0deg, #E8E8E8, #FFFFFF, #C0C0C0, #9A9A9A, #E8E8E8); box-shadow: 0 0 18px 2px rgba(210,210,210,0.5); }
+  .frame-bronce { background: conic-gradient(from 0deg, #CD7F32, #F0C89A, #CD7F32, #8A5222, #CD7F32); box-shadow: 0 0 18px 2px rgba(205,127,50,0.5); }
+
+  .card-oro { border: 1px solid rgba(255,215,0,0.5); box-shadow: 0 0 30px -6px rgba(255,215,0,0.35); }
+  .card-plata { border: 1px solid rgba(220,220,220,0.5); box-shadow: 0 0 24px -6px rgba(220,220,220,0.3); }
+  .card-bronce { border: 1px solid rgba(205,127,50,0.5); box-shadow: 0 0 24px -6px rgba(205,127,50,0.3); }
+
+  .badge-neon { text-shadow: 0 0 8px currentColor; }
+  .trofeo-glow { filter: drop-shadow(0 0 18px rgba(255,215,0,0.55)); }
+  .estrellas-hero { color:#FFD700; text-shadow: 0 0 10px rgba(255,215,0,0.7); }
+
+  .barra-fondo { background: rgba(255,255,255,0.08); border-radius:999px; overflow:hidden; }
+  .barra-fill { height:100%; border-radius:999px; background: linear-gradient(90deg,#22D3EE,#FFD700); transition: width .6s ease; }
+
+  @keyframes fadeInUp { from { opacity:0; transform: translateY(16px); } to { opacity:1; transform: translateY(0); } }
+  .fade-in-up { animation: fadeInUp .5s ease both; }
+
+  @keyframes expandDown { from { opacity:0; transform: scaleY(0.95); } to { opacity:1; transform: scaleY(1); } }
+  .expand-down { animation: expandDown .25s ease-out both; transform-origin: top; }
+
+  @keyframes pulseGlow { 0%,100% { box-shadow: 0 0 12px 0 rgba(255,215,0,0.25); } 50% { box-shadow: 0 0 22px 4px rgba(255,215,0,0.5); } }
+  .pulse-glow { animation: pulseGlow 2.4s ease-in-out infinite; }
+
+  .tab-btn { transition: all .2s ease; }
+  .tab-btn.activo { background: linear-gradient(90deg,#22D3EE,#0EA5E9); color:#06131F; box-shadow: 0 0 16px rgba(34,211,238,0.45); }
+  .fila-jugador { transition: background-color .2s ease, transform .15s ease; }
+  .fila-jugador:hover { background-color: rgba(255,255,255,0.06); }
+
+  /* ===== Coronas / perfil / salón de la fama ===== */
+  .corona { filter: drop-shadow(0 0 6px rgba(255,215,0,0.75)); }
+  .modal-overlay { position:fixed; top:0; right:0; bottom:0; left:0; z-index:50; background:rgba(3,7,18,0.78); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); display:flex; align-items:flex-end; justify-content:center; }
+  .modal-card { width:100%; max-width:560px; max-height:92vh; overflow-y:auto; border-radius:24px 24px 0 0; background: linear-gradient(180deg,#0E1730,#0B1220); color:#E8EEFC; border:1px solid rgba(255,255,255,0.1); animation: fadeInUp .3s ease both; }
+  @media (min-width:640px) {
+    .modal-overlay { align-items:center; }
+    .modal-card { border-radius:24px; }
+  }
+  .foto-perfil { width:104px; height:104px; border-radius:50%; object-fit:cover; background:#1b2840; }
+  .ficha { position:absolute; transform: translate(-50%, -50%); display:flex; flex-direction:column; align-items:center; touch-action:none; user-select:none; -webkit-user-select:none; z-index:2; }
+  .ficha-foto { width:46px; height:46px; border-radius:50%; object-fit:cover; background:#1b2840; border:3px solid #fff; box-shadow:0 2px 6px rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; }
+  .ficha-nombre { margin-top:2px; font-size:11px; font-weight:700; color:#fff; text-shadow:0 1px 3px rgba(0,0,0,0.9); max-width:70px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .ficha.sel .ficha-foto { box-shadow:0 0 0 4px rgba(255,215,0,0.9), 0 2px 8px rgba(0,0,0,0.6); }
+  .ficha.editable { cursor:grab; }
+  .trofeo-chip { background: rgba(255,215,0,0.08); border:1px solid rgba(255,215,0,0.3); }
+</style>
+<script>
+  // Framer Motion / tailwindcss-animate necesitan bundler; en un archivo único sin
+  // build step se logra el mismo efecto (fade-in, slide-up, glow, hover) con las
+  // animaciones CSS de arriba, sin depender de una librería externa frágil por CDN.
+</script>
+
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useMemo, useRef } = React;
+
+// ============ CONFIGURÁ ACÁ TU PROYECTO DE FIREBASE ============
+// 1. Andá a https://console.firebase.google.com -> crear proyecto
+// 2. Build -> Realtime Database -> crear base (modo de prueba)
+// 3. Configuración del proyecto -> ícono "</>" (Web) -> copiá el config y pegalo abajo
+const firebaseConfig = {
+  apiKey: "AIzaSyA-fuFrcLsUpUIkL40qcgxj2IGllN-SvwE",
+  authDomain: "chino-a425c.firebaseapp.com",
+  databaseURL: "https://chino-a425c-default-rtdb.firebaseio.com",
+  projectId: "chino-a425c",
+  storageBucket: "chino-a425c.firebasestorage.app",
+  messagingSenderId: "772632398264",
+  appId: "1:772632398264:web:c20e9d76a02aa3214da74d"
+};
+firebase.initializeApp(firebaseConfig);
+// Los datos de este torneo viven bajo su propia raíz ("turnotarde") dentro de la base,
+// así no se mezclan con los de otros torneos que usan el mismo proyecto de Firebase.
+const RAIZ_DATOS = "turnotarde";
+const raizDb = firebase.database().ref(RAIZ_DATOS);
+const db = { ref: (ruta) => (ruta ? raizDb.child(ruta) : raizDb) };
+
+// Logo de EMU SAIC (embebido para que el archivo siga siendo uno solo)
+const LOGO_EMU = "data:image/png;base64,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";
+
+// Atrapa cualquier error (aunque sea de Firebase) y lo muestra como alert.
+// Así en el celular, sin consola, podés ver qué está fallando.
+window.addEventListener("error", (e) => alert("Error: " + e.message));
+window.addEventListener("unhandledrejection", (e) => alert("Error: " + (e.reason && e.reason.message ? e.reason.message : e.reason)));
+
+// Usuario y contraseña de admin (cambialos si querés)
+const ADMIN_USER = "admin";
+const ADMIN_PASS = "1234";
+
+// Convierte un link de Google Drive (de "compartir") a un link de imagen directa.
+// Los links de Drive normales devuelven una página HTML, no la imagen en sí,
+// por eso no cargan en un <img>. Si detecta un link de Drive, lo convierte;
+// si no, devuelve la URL tal cual (para links de Imgur, etc. que ya son directos).
+function convertirLinkFoto(url) {
+  if (!url) return url;
+  if (url.startsWith("data:")) return url;
+  const m = url.match(/drive\.google\.com\/file\/d\/([^/]+)/) || url.match(/[?&]id=([^&]+)/);
+  if (m && m[1]) return `https://lh3.googleusercontent.com/d/${m[1]}`;
+  return url;
+}
+
+// ============ HELPERS ============
+function calcularEstadisticas(j) {
+  const pj = j.pj || 0;
+  const puntos = j.puntos || 0;
+  const promedio = pj > 0 ? (puntos / pj) : 0;
+  return { ...j, pj, promedio };
+}
+
+function ordenarTabla(jugadores) {
+  return [...jugadores]
+    .map(calcularEstadisticas)
+    .sort((a, b) => {
+      if (b.promedio !== a.promedio) return b.promedio - a.promedio;
+      if ((b.puntos||0) !== (a.puntos||0)) return (b.puntos||0) - (a.puntos||0);
+      return (b.pj||0) - (a.pj||0);
+    });
+}
+
+// ============ TEMPORADAS / PREMIOS ============
+const PREMIOS_META = {
+  campeon: { icono: "👑", nombre: "Campeón" },
+  goleador: { icono: "⚽", nombre: "Goleador" },
+  mejor_arquero: { icono: "🧤", nombre: "Mejor arquero" },
+  equipo_ideal: { icono: "⭐", nombre: "Equipo ideal" }
+};
+const ORDEN_PREMIOS = ["campeon", "goleador", "mejor_arquero", "equipo_ideal"];
+
+// Calcula los premios con la tabla actual.
+// - Campeón: el puntero de la tabla.
+// - Goleador: el que más goles hizo (si hay empate, lo comparten).
+// - Mejor arquero y Equipo ideal (1 arquero + 4 de campo): salen por promedio,
+//   pero solo entre quienes jugaron al menos la mitad de los partidos del que más jugó.
+function calcularPremios(jugadores) {
+  const tabla = ordenarTabla(jugadores).filter(j => j.pj > 0);
+  if (tabla.length === 0) return [];
+  const minPJ = Math.max(1, Math.ceil(Math.max(...tabla.map(j => j.pj)) * 0.5));
+  const elegibles = tabla.filter(j => j.pj >= minPJ);
+  const premios = [];
+  const dar = (tipo, j) => premios.push({ tipo, jugadorId: j.id, nombre: j.nombre, foto: j.foto || "" });
+
+  dar("campeon", tabla[0]);
+
+  const maxGoles = Math.max(...tabla.map(j => j.goles || 0));
+  if (maxGoles > 0) tabla.filter(j => (j.goles || 0) === maxGoles).forEach(j => dar("goleador", j));
+
+  const arquero = elegibles.find(j => j.arquero);
+  if (arquero) dar("mejor_arquero", arquero);
+
+  const campo = elegibles.filter(j => !j.arquero).slice(0, arquero ? 4 : 5);
+  (arquero ? [arquero, ...campo] : campo).forEach(j => dar("equipo_ideal", j));
+
+  return premios;
+}
+
+// { jugadorId: cantidad de coronas (temporadas ganadas) }
+function contarCoronas(temporadas) {
+  const mapa = {};
+  temporadas.forEach(t => (t.premios || []).forEach(p => {
+    if (p.tipo === "campeon") mapa[p.jugadorId] = (mapa[p.jugadorId] || 0) + 1;
+  }));
+  return mapa;
+}
+
+// Todos los premios de un jugador, en el orden en que vienen las temporadas.
+function premiosDeJugador(id, temporadas) {
+  const lista = [];
+  temporadas.forEach(t => (t.premios || []).forEach(p => {
+    if (p.jugadorId === id) lista.push({ temporada: t.nombre, tipo: p.tipo });
+  }));
+  return lista;
+}
+
+function Coronas({ n }) {
+  if (!n || n <= 0) return null;
+  return (
+    <span className="corona ml-1" title={n + (n === 1 ? " corona" : " coronas")}>
+      👑{n > 1 && <span className="text-xs font-bold text-[#FFD700]">×{n}</span>}
+    </span>
+  );
+}
+
+// Sortea dos equipos balanceados según calidad. Si hay 2+ arqueros, reparte
+// uno de cada lado. Si hay 0 o 1 arquero, ese arquero cuenta como 4 estrellas
+// para el sorteo (su calidad real no se usa para balancear).
+function armarEquipos(disponibles) {
+  const arqueros = disponibles.filter(j => j.arquero);
+  const campo = disponibles.filter(j => !j.arquero);
+  let equipoA = [], equipoB = [], sumaA = 0, sumaB = 0;
+
+  if (arqueros.length >= 2) {
+    const arqOrdenados = [...arqueros].sort((a, b) => b.calidad - a.calidad);
+    arqOrdenados.forEach((j, i) => {
+      if (i % 2 === 0) { equipoA.push(j); sumaA += j.calidad; }
+      else { equipoB.push(j); sumaB += j.calidad; }
+    });
+    const resto = [...campo].sort((a, b) => b.calidad - a.calidad);
+    resto.forEach(j => {
+      if (sumaA <= sumaB) { equipoA.push(j); sumaA += j.calidad; }
+      else { equipoB.push(j); sumaB += j.calidad; }
+    });
+  } else {
+    const todos = disponibles
+      .map(j => ({ ...j, valorDraft: j.arquero ? 4 : j.calidad }))
+      .sort((a, b) => b.valorDraft - a.valorDraft);
+    todos.forEach(j => {
+      if (sumaA <= sumaB) { equipoA.push(j); sumaA += j.valorDraft; }
+      else { equipoB.push(j); sumaB += j.valorDraft; }
+    });
+  }
+  return { equipoA, equipoB };
+}
+
+function Estrellas({ n, onClick }) {
+  return (
+    <span className="text-yellow-500 text-xl select-none">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <span
+          key={i}
+          onClick={() => onClick && onClick(i + 1)}
+          style={{ cursor: onClick ? "pointer" : "default" }}
+        >
+          {i < n ? "★" : "☆"}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+function Cuadritos({ ultimos = [] }) {
+  const colores = { V: "#22c55e", E: "#eab308", D: "#ef4444" };
+  const slots = [...ultimos].slice(0, 5);
+  while (slots.length < 5) slots.push(null);
+  return (
+    <div className="flex">
+      {slots.map((r, i) => (
+        <span
+          key={i}
+          className="cuadrito"
+          style={{ background: r ? colores[r] : "#d1d5db" }}
+          title={r === "V" ? "Ganado" : r === "E" ? "Empatado" : r === "D" ? "Perdido" : "—"}
+        ></span>
+      ))}
+    </div>
+  );
+}
+
+// ============ PODIO (estilo tarjetas FIFA) ============
+function TarjetaPodio({ j, puesto, coronas = 0, onSelect }) {
+  const meta = {
+    1: { medalla: "🥇", frame: "frame-oro", card: "card-oro pulse-glow", label: "1°", color: "text-[#FFD700]" },
+    2: { medalla: "🥈", frame: "frame-plata", card: "card-plata", label: "2°", color: "text-[#E8E8E8]" },
+    3: { medalla: "🥉", frame: "frame-bronce", card: "card-bronce", label: "3°", color: "text-[#CD7F32]" }
+  }[puesto];
+
+  return (
+    <div onClick={() => onSelect && onSelect(j.id)} className={`glass glass-hover rounded-2xl p-4 flex flex-col items-center w-40 sm:w-48 cursor-pointer ${meta.card}`}>
+      <div className={`text-2xl mb-1 ${meta.color} badge-neon`}>{meta.medalla} {meta.label}</div>
+      <div className={`foto-podio-frame ${meta.frame} mb-2`}>
+        <img src={j.foto || "https://via.placeholder.com/80?text=%20"} className="foto-podio" alt={j.nombre} />
+      </div>
+      <p className="font-bold text-center leading-tight">{j.nombre} {j.arquero && "🧤"}<Coronas n={coronas} /></p>
+      <p className={`text-2xl font-extrabold ${meta.color}`}>{j.promedio.toFixed(2)}</p>
+      <p className="text-[10px] uppercase tracking-wide text-slate-400 mb-2">pts / partido</p>
+      <div className="grid grid-cols-3 gap-2 w-full text-center text-xs text-slate-300 border-t border-white/10 pt-2">
+        <div><p className="font-bold text-white">{j.pj || 0}</p><p>PJ</p></div>
+        <div><p className="font-bold text-white">{j.pg || 0}</p><p>PG</p></div>
+        <div><p className="font-bold text-white">{j.goles || 0}</p><p>Goles</p></div>
+      </div>
+    </div>
+  );
+}
+
+function Podio({ tabla, coronas = {}, onSelect }) {
+  const top3 = tabla.slice(0, 3);
+  if (top3.length === 0) return null;
+  const orden = [1, 0, 2]; // 2do - 1ro - 3ro
+  return (
+    <div className="mb-8 fade-in-up">
+      <h2 className="text-center text-lg font-bold tracking-wide text-slate-300 mb-4">🏆 PODIO DEL TORNEO 🏆</h2>
+      <div className="flex justify-center items-end gap-3 sm:gap-5 flex-wrap">
+        {orden.map((idx, i) => {
+          const j = top3[idx];
+          if (!j) return null;
+          return (
+            <div key={j.id} className="fade-in-up" style={{ animationDelay: `${i * 0.12}s` }}>
+              <TarjetaPodio j={j} puesto={idx + 1} coronas={coronas[j.id] || 0} onSelect={onSelect} />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ============ TABLA DE POSICIONES ============
+function HistorialJugador({ j }) {
+  const historial = [...(j.historial || [])].reverse();
+  if (historial.length === 0) {
+    return <p className="text-xs text-slate-400 p-3">Sin partidos individuales cargados todavía (solo estadísticas globales).</p>;
+  }
+  return (
+    <div className="p-3 expand-down">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="text-slate-400">
+            <th className="text-left p-1">Fecha</th>
+            <th className="p-1">Resultado</th>
+            <th className="p-1">Goles</th>
+          </tr>
+        </thead>
+        <tbody>
+          {historial.map((h, i) => (
+            <tr key={i} className="border-t border-white/10">
+              <td className="p-1">{h.fecha}</td>
+              <td className="p-1 text-center">
+                {h.resultado === "V" ? "✅ Ganó" : h.resultado === "E" ? "🟨 Empató" : "🟥 Perdió"}
+              </td>
+              <td className="p-1 text-center">{h.goles || 0}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function TablaPosiciones({ tabla, coronas = {}, onSelect }) {
+  return (
+    <div className="glass rounded-2xl overflow-hidden fade-in-up">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-white/5 text-slate-300 text-xs uppercase tracking-wide">
+              <th className="p-3 text-left">#</th>
+              <th className="p-3 text-left">Jugador</th>
+              <th className="p-3">PJ</th>
+              <th className="p-3">PG</th>
+              <th className="p-3">PE</th>
+              <th className="p-3">PP</th>
+              <th className="p-3">Prom.</th>
+              <th className="p-3">Goles</th>
+              <th className="p-3 text-left">Últimos 5</th>
+            </tr>
+          </thead>
+          <tbody>
+            {tabla.map((j, i) => (
+              <React.Fragment key={j.id}>
+                <tr
+                  className="fila-jugador cursor-pointer border-t border-white/5 fade-in-up"
+                  style={{ animationDelay: `${Math.min(i, 12) * 0.04}s` }}
+                  onClick={() => onSelect && onSelect(j.id)}
+                >
+                  <td className="p-3 font-bold text-slate-400">{i + 1}</td>
+                  <td className="p-3 flex items-center gap-2">
+                    <img src={j.foto || "https://via.placeholder.com/56?text=%20"} className="foto-jugador" alt={j.nombre} />
+                    <span className="font-medium">{j.nombre} {j.arquero && <span title="Arquero">🧤</span>}<Coronas n={coronas[j.id] || 0} /></span>
+                  </td>
+                  <td className="p-3 text-center">{j.pj || 0}</td>
+                  <td className="p-3 text-center">{j.pg || 0}</td>
+                  <td className="p-3 text-center">{j.pe || 0}</td>
+                  <td className="p-3 text-center">{j.pp || 0}</td>
+                  <td className="p-3 text-center font-bold text-[#FFD700]">{j.promedio.toFixed(2)}</td>
+                  <td className="p-3 text-center">{j.goles || 0}</td>
+                  <td className="p-3"><Cuadritos ultimos={j.ultimos} /></td>
+                </tr>
+              </React.Fragment>
+            ))}
+            {tabla.length === 0 && (
+              <tr><td colSpan="9" className="p-4 text-center text-slate-400">Todavía no hay jugadores cargados</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      <p className="text-xs text-slate-500 p-3">Tocá un jugador para ver su perfil.</p>
+    </div>
+  );
+}
+
+// ============ ESTADÍSTICAS DESTACADAS (tabs) ============
+function rachaActual(j) {
+  const u = j.ultimos || [];
+  let r = 0;
+  for (let i = 0; i < u.length; i++) {
+    if (u[i] === "V") r++; else break;
+  }
+  return r;
+}
+
+function BarraEfectividad({ pct }) {
+  return (
+    <div className="barra-fondo h-2 w-full">
+      <div className="barra-fill" style={{ width: `${pct}%` }}></div>
+    </div>
+  );
+}
+
+function StatsTabs({ tabla, onSelect }) {
+  const [tab, setTab] = useState("goleadores");
+
+  const goleadores = [...tabla].filter(j => (j.goles || 0) > 0).sort((a, b) => (b.goles || 0) - (a.goles || 0)).slice(0, 10);
+  const arqueros = [...tabla].filter(j => j.arquero && (j.pj || 0) > 0).sort((a, b) => b.promedio - a.promedio).slice(0, 10);
+  const enRacha = tabla.map(j => ({ ...j, racha: rachaActual(j) })).filter(j => j.racha >= 2).sort((a, b) => b.racha - a.racha).slice(0, 10);
+  const efectividad = [...tabla].filter(j => (j.pj || 0) > 0)
+    .map(j => ({ ...j, pct: Math.round((j.promedio / 3) * 100) }))
+    .sort((a, b) => b.pct - a.pct).slice(0, 10);
+
+  const tabs = [
+    { key: "goleadores", label: "⚽ Goleadores" },
+    { key: "valla", label: "🧤 Valla menos vencida" },
+    { key: "racha", label: "🔥 En racha" },
+    { key: "efectividad", label: "📊 Efectividad" }
+  ];
+
+  return (
+    <div className="glass rounded-2xl p-4 mt-6 fade-in-up">
+      <div className="flex flex-wrap gap-2 mb-4">
+        {tabs.map(t => (
+          <button
+            key={t.key}
+            className={`tab-btn px-3 py-2 rounded-xl text-xs sm:text-sm font-bold bg-white/5 text-slate-200 ${tab === t.key ? "activo" : ""}`}
+            onClick={() => setTab(t.key)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "goleadores" && (
+        <div className="space-y-2">
+          {goleadores.map((j, i) => (
+            <div key={j.id} onClick={() => onSelect && onSelect(j.id)} className="flex items-center gap-3 fade-in-up cursor-pointer" style={{ animationDelay: `${i * 0.05}s` }}>
+              <span className="w-5 text-slate-400 text-sm">{i + 1}</span>
+              <img src={j.foto || "https://via.placeholder.com/40?text=%20"} className="foto-jugador" style={{ width: 36, height: 36 }} alt={j.nombre} />
+              <span className="flex-1">{j.nombre}</span>
+              <span className="font-bold text-[#FFD700]">{j.goles} ⚽</span>
+            </div>
+          ))}
+          {goleadores.length === 0 && <p className="text-slate-400 text-sm">Todavía nadie hizo goles cargados.</p>}
+        </div>
+      )}
+
+      {tab === "valla" && (
+        <div className="space-y-2">
+          <p className="text-xs text-slate-400 mb-2">Arqueros ordenados por su promedio de puntos por partido (no llevamos goles en contra por ahora).</p>
+          {arqueros.map((j, i) => (
+            <div key={j.id} onClick={() => onSelect && onSelect(j.id)} className="flex items-center gap-3 fade-in-up cursor-pointer" style={{ animationDelay: `${i * 0.05}s` }}>
+              <span className="w-5 text-slate-400 text-sm">{i + 1}</span>
+              <img src={j.foto || "https://via.placeholder.com/40?text=%20"} className="foto-jugador" style={{ width: 36, height: 36 }} alt={j.nombre} />
+              <span className="flex-1">{j.nombre} 🧤</span>
+              <span className="font-bold text-[#22D3EE]">{j.promedio.toFixed(2)} pts/PJ</span>
+            </div>
+          ))}
+          {arqueros.length === 0 && <p className="text-slate-400 text-sm">Todavía no hay arqueros con partidos jugados.</p>}
+        </div>
+      )}
+
+      {tab === "racha" && (
+        <div className="space-y-2">
+          {enRacha.map((j, i) => (
+            <div key={j.id} onClick={() => onSelect && onSelect(j.id)} className="flex items-center gap-3 fade-in-up cursor-pointer" style={{ animationDelay: `${i * 0.05}s` }}>
+              <span className="w-5 text-slate-400 text-sm">{i + 1}</span>
+              <img src={j.foto || "https://via.placeholder.com/40?text=%20"} className="foto-jugador" style={{ width: 36, height: 36 }} alt={j.nombre} />
+              <span className="flex-1">{j.nombre}</span>
+              <span className="font-bold text-orange-400">🔥 {j.racha} seguidas</span>
+            </div>
+          ))}
+          {enRacha.length === 0 && <p className="text-slate-400 text-sm">Nadie viene con racha de 2 o más victorias.</p>}
+        </div>
+      )}
+
+      {tab === "efectividad" && (
+        <div className="space-y-3">
+          {efectividad.map((j, i) => (
+            <div key={j.id} onClick={() => onSelect && onSelect(j.id)} className="fade-in-up cursor-pointer" style={{ animationDelay: `${i * 0.05}s` }}>
+              <div className="flex items-center justify-between text-sm mb-1">
+                <span>{j.nombre}</span>
+                <span className="font-bold text-[#FFD700]">{j.pct}%</span>
+              </div>
+              <BarraEfectividad pct={j.pct} />
+            </div>
+          ))}
+          {efectividad.length === 0 && <p className="text-slate-400 text-sm">Todavía no hay partidos jugados.</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============ HERO ============
+function Hero({ partidos, jugadores, onVerCancha }) {
+  const nombreDe = (id) => (jugadores.find(j => j.id === id) || {}).nombre || "?";
+  const pendientes = [...partidos].filter(p => !p.finalizado).sort((a, b) => a.fecha.localeCompare(b.fecha));
+  const finalizados = [...partidos].filter(p => p.finalizado).sort((a, b) => b.fecha.localeCompare(a.fecha));
+  const proxima = pendientes[0];
+  const ultima = finalizados[0];
+
+  return (
+    <div className="relative rounded-2xl overflow-hidden mb-8 fade-in-up glass">
+      <div className="p-6 sm:p-10 flex flex-col items-center text-center relative">
+        <div className="bg-white rounded-xl px-4 py-2 mb-4 shadow-lg">
+          <img src={LOGO_EMU} alt="EMU SAIC" style={{ height: 52, maxWidth: "100%" }} />
+        </div>
+        <div className="text-5xl mb-1 trofeo-glow">🏆</div>
+        <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
+          <span className="bg-gradient-to-r from-[#22D3EE] via-white to-[#FFD700] bg-clip-text text-transparent">
+            LA BANDA DEL TURNO TARDE
+          </span>
+        </h1>
+        <div className="estrellas-hero text-xl mt-1 mb-6">★ ★ ★</div>
+
+        <div className="grid sm:grid-cols-2 gap-4 w-full max-w-2xl">
+          <div className="glass glass-hover rounded-xl p-4 text-left">
+            <p className="text-xs uppercase tracking-wide text-slate-400 mb-2">Próxima fecha</p>
+            {proxima ? (
+              <>
+                <p className="font-bold text-lg">{proxima.fecha}</p>
+                <p className="text-xs text-slate-300 mt-1">
+                  <span className="text-[#22D3EE] font-semibold">Equipo A:</span> {(proxima.equipoA || []).map(nombreDe).join(", ")}
+                </p>
+                <p className="text-xs text-slate-300">
+                  <span className="text-[#FFD700] font-semibold">Equipo B:</span> {(proxima.equipoB || []).map(nombreDe).join(", ")}
+                </p>
+                {proxima.posiciones && onVerCancha && (
+                  <button className="mt-3 text-xs bg-[#22D3EE]/20 text-[#22D3EE] rounded-full px-3 py-1 font-bold"
+                    onClick={() => onVerCancha(proxima)}>⚽ Ver cancha</button>
+                )}
+              </>
+            ) : <p className="text-slate-400 text-sm">No hay fecha programada todavía</p>}
+          </div>
+
+          <div className="glass glass-hover rounded-xl p-4 text-left">
+            <p className="text-xs uppercase tracking-wide text-slate-400 mb-2">Último resultado</p>
+            {ultima ? (
+              <>
+                <p className="font-bold text-lg">{ultima.fecha}</p>
+                <p className="text-sm mt-1">
+                  {ultima.resultado === "E" ? "🟨 Empate" : ultima.resultado === "A" ? "✅ Ganó Equipo A" : "✅ Ganó Equipo B"}
+                </p>
+              </>
+            ) : <p className="text-slate-400 text-sm">Todavía no hay partidos jugados</p>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============ IMAGEN DE PREMIOS DE LA TEMPORADA ============
+function cargarImagen(src) {
+  return new Promise(resolve => {
+    if (!src) return resolve(null);
+    const img = new Image();
+    if (!src.startsWith("data:")) img.crossOrigin = "anonymous";
+    const timer = setTimeout(() => resolve(null), 8000);
+    img.onload = () => { clearTimeout(timer); resolve(img); };
+    img.onerror = () => { clearTimeout(timer); resolve(null); };
+    img.src = src;
+  });
+}
+
+function dibujarTexto(ctx, txt, x, y, size, color, bold = true, maxW = 940) {
+  ctx.font = (bold ? "bold " : "") + size + "px system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
+  ctx.fillStyle = color;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(txt, x, y, maxW);
+}
+
+// Foto redonda con aro de color. Si la foto no cargó, dibuja la inicial.
+function dibujarAvatar(ctx, img, nombre, cx, cy, r, aro) {
+  ctx.save();
+  ctx.shadowColor = aro;
+  ctx.shadowBlur = 30;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r + 8, 0, Math.PI * 2);
+  ctx.fillStyle = aro;
+  ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.clip();
+  if (img) {
+    const lado = Math.min(img.width, img.height);
+    const sx = (img.width - lado) / 2;
+    const sy = (img.height - lado) * 0.25;
+    ctx.drawImage(img, sx, sy, lado, lado, cx - r, cy - r, r * 2, r * 2);
+  } else {
+    ctx.fillStyle = "#1b2840";
+    ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+    dibujarTexto(ctx, (nombre || "?").charAt(0).toUpperCase(), cx, cy, r, "#E8EEFC");
+  }
+  ctx.restore();
+}
+
+// Arma la imagen (1080x1700) con campeón, goleador, mejor arquero y equipo ideal.
+async function generarImagenTemporada(t) {
+  const W = 1080, H = 1700;
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  const premios = t.premios || [];
+  const de = (tipo) => premios.filter(p => p.tipo === tipo);
+  const stat = (id) => (t.tabla || []).find(x => x.id === id) || {};
+
+  const ids = [...new Set(premios.map(p => p.jugadorId))];
+  const imgs = {};
+  await Promise.all(ids.map(async id => {
+    const p = premios.find(x => x.jugadorId === id);
+    imgs[id] = await cargarImagen(p.foto);
+  }));
+
+  // fondo
+  const fondo = ctx.createLinearGradient(0, 0, 0, H);
+  fondo.addColorStop(0, "#060B18");
+  fondo.addColorStop(0.5, "#0B1220");
+  fondo.addColorStop(1, "#0E1730");
+  ctx.fillStyle = fondo;
+  ctx.fillRect(0, 0, W, H);
+  const brilloOro = ctx.createRadialGradient(W * 0.85, 0, 0, W * 0.85, 0, 650);
+  brilloOro.addColorStop(0, "rgba(245,179,1,0.22)");
+  brilloOro.addColorStop(1, "rgba(245,179,1,0)");
+  ctx.fillStyle = brilloOro;
+  ctx.fillRect(0, 0, W, H);
+  const brilloCeleste = ctx.createRadialGradient(W * 0.15, 0, 0, W * 0.15, 0, 650);
+  brilloCeleste.addColorStop(0, "rgba(34,211,238,0.18)");
+  brilloCeleste.addColorStop(1, "rgba(34,211,238,0)");
+  ctx.fillStyle = brilloCeleste;
+  ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = "rgba(255,215,0,0.35)";
+  ctx.lineWidth = 4;
+  ctx.strokeRect(30, 30, W - 60, H - 60);
+
+  // encabezado
+  const logo = await cargarImagen(LOGO_EMU);
+  if (logo) {
+    const ph = 96, pw = Math.round(logo.width * (ph - 24) / logo.height) + 48;
+    const x0 = (W - pw) / 2, y0 = 58, r = 18;
+    ctx.fillStyle = "#FFFFFF";
+    ctx.beginPath();
+    ctx.moveTo(x0 + r, y0);
+    ctx.arcTo(x0 + pw, y0, x0 + pw, y0 + ph, r);
+    ctx.arcTo(x0 + pw, y0 + ph, x0, y0 + ph, r);
+    ctx.arcTo(x0, y0 + ph, x0, y0, r);
+    ctx.arcTo(x0, y0, x0 + pw, y0, r);
+    ctx.closePath();
+    ctx.fill();
+    ctx.drawImage(logo, x0 + 24, y0 + 12, pw - 48, ph - 24);
+  } else {
+    dibujarTexto(ctx, "🏆", W / 2, 110, 90, "#FFD700");
+  }
+  const gradTitulo = ctx.createLinearGradient(W / 2 - 420, 0, W / 2 + 420, 0);
+  gradTitulo.addColorStop(0, "#22D3EE");
+  gradTitulo.addColorStop(0.5, "#FFFFFF");
+  gradTitulo.addColorStop(1, "#FFD700");
+  dibujarTexto(ctx, "LA BANDA DEL TURNO TARDE", W / 2, 215, 54, gradTitulo);
+  dibujarTexto(ctx, t.nombre || "Temporada", W / 2, 272, 42, "#E8EEFC");
+  if (t.cerradaEn) {
+    const f = new Date(t.cerradaEn).toLocaleDateString("es-AR", { day: "numeric", month: "long", year: "numeric" });
+    dibujarTexto(ctx, f, W / 2, 322, 26, "#94A3B8", false);
+  }
+
+  // campeón
+  const camp = de("campeon")[0];
+  if (camp) {
+    dibujarTexto(ctx, "👑", W / 2, 415, 80, "#FFD700");
+    dibujarAvatar(ctx, imgs[camp.jugadorId], camp.nombre, W / 2, 620, 150, "#FFD700");
+    dibujarTexto(ctx, "CAMPEÓN", W / 2, 832, 38, "#FFD700");
+    dibujarTexto(ctx, camp.nombre, W / 2, 895, 68, "#FFFFFF", true, 900);
+    const sc = stat(camp.jugadorId);
+    if (sc.promedio != null) {
+      dibujarTexto(ctx, Number(sc.promedio).toFixed(2) + " pts/partido · " + (sc.pj || 0) + " PJ", W / 2, 952, 30, "#94A3B8", false);
+    }
+  }
+
+  // goleador y mejor arquero
+  const bloques = [];
+  const gol = de("goleador");
+  if (gol.length) {
+    const g = stat(gol[0].jugadorId).goles || 0;
+    bloques.push({ label: "⚽ GOLEADOR", ps: gol, texto: g + (g === 1 ? " gol" : " goles") });
+  }
+  const arq = de("mejor_arquero");
+  if (arq.length) {
+    const pr = stat(arq[0].jugadorId).promedio || 0;
+    bloques.push({ label: "🧤 MEJOR ARQUERO", ps: arq, texto: Number(pr).toFixed(2) + " pts/partido" });
+  }
+  const xs = bloques.length === 1 ? [W / 2] : [W * 0.27, W * 0.73];
+  bloques.forEach((b, i) => {
+    const x = xs[i];
+    dibujarTexto(ctx, b.label, x, 1020, 34, "#22D3EE", true, 440);
+    dibujarAvatar(ctx, imgs[b.ps[0].jugadorId], b.ps[0].nombre, x, 1150, 85, "#22D3EE");
+    dibujarTexto(ctx, b.ps.map(p => p.nombre).join(" / "), x, 1290, 44, "#FFFFFF", true, 440);
+    dibujarTexto(ctx, b.texto, x, 1335, 28, "#94A3B8", false, 440);
+  });
+
+  // equipo ideal
+  const eq = de("equipo_ideal");
+  if (eq.length) {
+    dibujarTexto(ctx, "⭐ EQUIPO IDEAL", W / 2, 1405, 36, "#FFD700");
+    const sep = 190;
+    const x0 = W / 2 - ((eq.length - 1) * sep) / 2;
+    eq.forEach((p, i) => {
+      const x = x0 + i * sep;
+      dibujarAvatar(ctx, imgs[p.jugadorId], p.nombre, x, 1520, 65, "#FFD700");
+      dibujarTexto(ctx, p.nombre + (stat(p.jugadorId).arquero ? " 🧤" : ""), x, 1625, 26, "#E8EEFC", true, 175);
+    });
+  }
+
+  return canvas;
+}
+
+// Ventana con la imagen lista para compartir o descargar
+function ImagenTemporada({ temporada, cerrada, onClose }) {
+  const [url, setUrl] = useState(null);
+  const [blob, setBlob] = useState(null);
+  const [error, setError] = useState("");
+  const nombreArchivo = "premios-" + (temporada.nombre || "temporada").replace(/[^a-zA-Z0-9]+/g, "-") + ".png";
+
+  useEffect(() => {
+    let creada = null;
+    let cancelado = false;
+    generarImagenTemporada(temporada)
+      .then(canvas => new Promise((ok, fail) =>
+        canvas.toBlob(b => b ? ok(b) : fail(new Error("no se pudo generar la imagen")), "image/png")))
+      .then(b => {
+        if (cancelado) return;
+        creada = URL.createObjectURL(b);
+        setBlob(b);
+        setUrl(creada);
+      })
+      .catch(e => { if (!cancelado) setError(e.message); });
+    return () => { cancelado = true; if (creada) URL.revokeObjectURL(creada); };
+  }, []);
+
+  const compartir = async () => {
+    const file = new File([blob], nombreArchivo, { type: "image/png" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file], title: temporada.nombre }); } catch (e) {}
+    } else {
+      alert("Este navegador no deja compartir directo. Usá Descargar.");
+    }
+  };
+
+  const descargar = () => {
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = nombreArchivo;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-card p-5" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-extrabold text-lg">{cerrada ? "🏁 ¡Terminó " + temporada.nombre + "!" : "🏆 " + temporada.nombre}</h2>
+          <button className="text-slate-400 text-2xl leading-none px-2" onClick={onClose} aria-label="Cerrar">✕</button>
+        </div>
+        {!url && !error && <p className="text-slate-400 text-sm py-10 text-center">Armando la imagen…</p>}
+        {error && <p className="text-red-400 text-sm py-6 text-center">No se pudo armar la imagen: {error}</p>}
+        {url && <img src={url} alt="Premios de la temporada" className="w-full rounded-xl mb-3" />}
+        {url && (
+          <div className="grid grid-cols-2 gap-2">
+            <button className="bg-[#FFD700] text-[#06131F] rounded-xl py-3 font-bold" onClick={compartir}>📤 Compartir</button>
+            <button className="bg-[#22D3EE] text-[#06131F] rounded-xl py-3 font-bold" onClick={descargar}>⬇️ Descargar</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============ PERFIL DE JUGADOR (modal) ============
+function PerfilJugador({ j, posicion, coronas, premios, onClose, esAdmin, partidos = [], jugadores = [] }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const pj = j.pj || 0;
+  const pct = pj > 0 ? Math.round((j.promedio / 3) * 100) : 0;
+  const golesPJ = pj > 0 ? ((j.goles || 0) / pj).toFixed(2) : "0.00";
+  const racha = rachaActual(j);
+  const stats = [
+    ["PJ", pj], ["PG", j.pg || 0], ["PE", j.pe || 0],
+    ["PP", j.pp || 0], ["Puntos", j.puntos || 0], ["Prom.", j.promedio.toFixed(2)],
+    ["Goles", j.goles || 0], ["Goles/PJ", golesPJ], ["Efect.", pct + "%"]
+  ];
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-card p-5" onClick={e => e.stopPropagation()}>
+        <div className="flex justify-end">
+          <button className="text-slate-400 text-2xl leading-none px-2" onClick={onClose} aria-label="Cerrar">✕</button>
+        </div>
+
+        <div className="flex flex-col items-center text-center -mt-2 mb-4">
+          <div className={`foto-podio-frame ${coronas > 0 ? "frame-oro" : "frame-plata"} mb-3`}>
+            <img src={j.foto || "https://via.placeholder.com/104?text=%20"} className="foto-perfil" alt={j.nombre} />
+          </div>
+          <h2 className="text-2xl font-extrabold">{j.nombre} {j.arquero && "🧤"}</h2>
+          {coronas > 0 && (
+            <p className="text-[#FFD700] font-bold mt-1">
+              <span className="corona">👑</span> {coronas === 1 ? "Campeón" : "Campeón ×" + coronas}
+            </p>
+          )}
+          {pj > 0 && <p className="text-sm text-slate-400 mt-1">#{posicion} en la tabla actual</p>}
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          {stats.map(([label, valor]) => (
+            <div key={label} className="glass rounded-xl p-3 text-center">
+              <p className="text-xl font-extrabold text-white">{valor}</p>
+              <p className="text-[10px] uppercase tracking-wide text-slate-400">{label}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex items-center justify-between glass rounded-xl p-3 mb-4">
+          <div>
+            <p className="text-[10px] uppercase tracking-wide text-slate-400 mb-1">Últimos 5</p>
+            <Cuadritos ultimos={j.ultimos} />
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] uppercase tracking-wide text-slate-400 mb-1">Racha de victorias</p>
+            <p className="font-bold text-orange-400">{racha > 0 ? "🔥 " + racha : "—"}</p>
+          </div>
+        </div>
+
+        <h3 className="text-sm font-bold text-slate-300 mb-2">🏆 Sala de trofeos</h3>
+        {premios.length > 0 ? (
+          <div className="flex flex-wrap gap-2 mb-4">
+            {premios.map((p, i) => {
+              const m = PREMIOS_META[p.tipo] || { icono: "🏅", nombre: p.tipo };
+              return (
+                <div key={i} className="trofeo-chip rounded-xl px-3 py-2 text-sm">
+                  {m.icono} {m.nombre} <span className="text-slate-400">· {p.temporada}</span>
+                </div>
+              );
+            })}
+          </div>
+        ) : <p className="text-sm text-slate-400 mb-4">Todavía no ganó premios.</p>}
+
+        <h3 className="text-sm font-bold text-slate-300 mb-1">Partidos de la temporada</h3>
+        <div className="max-h-56 overflow-y-auto">
+          <HistorialJugador j={j} />
+        </div>
+
+        {esAdmin && <AsignarFecha j={j} partidos={partidos} jugadores={jugadores} />}
+      </div>
+    </div>
+  );
+}
+
+// ============ SALÓN DE LA FAMA (temporadas cerradas) ============
+function SalonDeLaFama({ temporadas, onSelect, onVerImagen }) {
+  if (temporadas.length === 0) return null;
+  const fecha = (iso) => iso ? new Date(iso).toLocaleDateString("es-AR") : "";
+  return (
+    <div className="glass rounded-2xl p-4 mt-6 fade-in-up">
+      <h2 className="text-center text-lg font-bold tracking-wide text-slate-300 mb-4">🏛️ SALÓN DE LA FAMA</h2>
+      <div className="space-y-3">
+        {temporadas.map(t => {
+          const premios = t.premios || [];
+          return (
+            <div key={t.id} className="rounded-xl bg-white/5 p-3">
+              <div className="flex items-center justify-between mb-2">
+                <p className="font-bold">{t.nombre}</p>
+                <div className="flex items-center gap-3">
+                  <p className="text-xs text-slate-400">{fecha(t.cerradaEn)}</p>
+                  <button className="text-xs bg-[#FFD700]/20 text-[#FFD700] rounded-full px-3 py-1 font-bold"
+                    onClick={() => onVerImagen(t)}>🖼️ Ver imagen</button>
+                </div>
+              </div>
+              {ORDEN_PREMIOS.map(tipo => {
+                const lista = premios.filter(p => p.tipo === tipo);
+                if (lista.length === 0) return null;
+                const m = PREMIOS_META[tipo];
+                return (
+                  <div key={tipo} className="flex flex-wrap items-center gap-2 mb-1">
+                    <span className="text-xs text-slate-400 w-32">{m.icono} {m.nombre}</span>
+                    {lista.map(p => (
+                      <button key={p.jugadorId + tipo}
+                        className="text-sm bg-white/10 hover:bg-white/20 rounded-full px-3 py-0.5"
+                        onClick={() => onSelect(p.jugadorId)}>
+                        {p.nombre}
+                      </button>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ============ HOME (pública) ============
+function Home({ jugadores, partidos, temporadas = [], esAdmin = false }) {
+  const tabla = useMemo(() => ordenarTabla(jugadores), [jugadores]);
+  const temporadasOrd = useMemo(
+    () => [...temporadas].sort((a, b) => (b.cerradaEn || "").localeCompare(a.cerradaEn || "")),
+    [temporadas]
+  );
+  const coronas = useMemo(() => contarCoronas(temporadas), [temporadas]);
+  const [seleccionado, setSeleccionado] = useState(null);
+  const [imagenTemporada, setImagenTemporada] = useState(null);
+  const [canchaPartido, setCanchaPartido] = useState(null);
+  const jSel = seleccionado ? tabla.find(x => x.id === seleccionado) : null;
+
+  return (
+    <div className="landing-dark">
+      <div className="max-w-4xl mx-auto p-4 pb-16">
+        <Hero partidos={partidos} jugadores={jugadores} onVerCancha={setCanchaPartido} />
+        <Podio tabla={tabla} coronas={coronas} onSelect={setSeleccionado} />
+        <TablaPosiciones tabla={tabla} coronas={coronas} onSelect={setSeleccionado} />
+        <StatsTabs tabla={tabla} onSelect={setSeleccionado} />
+        <SalonDeLaFama temporadas={temporadasOrd} onSelect={setSeleccionado} onVerImagen={setImagenTemporada} />
+      </div>
+      {jSel && (
+        <PerfilJugador
+          j={jSel}
+          posicion={tabla.findIndex(x => x.id === jSel.id) + 1}
+          coronas={coronas[jSel.id] || 0}
+          premios={premiosDeJugador(jSel.id, temporadasOrd)}
+          onClose={() => setSeleccionado(null)}
+          esAdmin={esAdmin}
+          partidos={partidos}
+          jugadores={jugadores}
+        />
+      )}
+      {imagenTemporada && <ImagenTemporada temporada={imagenTemporada} onClose={() => setImagenTemporada(null)} />}
+      {canchaPartido && <CanchaModal partido={canchaPartido} jugadores={jugadores} onClose={() => setCanchaPartido(null)} />}
+    </div>
+  );
+}
+
+// ============ LOGIN ADMIN ============
+function LoginAdmin({ onLogin }) {
+  const [usuario, setUsuario] = useState("");
+  const [pass, setPass] = useState("");
+  const [error, setError] = useState("");
+
+  const entrar = () => {
+    if (usuario === ADMIN_USER && pass === ADMIN_PASS) {
+      onLogin();
+    } else {
+      setError("Usuario o contraseña incorrectos");
+    }
+  };
+
+  return (
+    <div className="max-w-sm mx-auto mt-16 bg-white p-6 rounded-2xl shadow">
+      <h2 className="text-xl font-bold mb-4 text-center">Ingreso Admin</h2>
+      <input className="border rounded-lg w-full p-2 mb-2" placeholder="Usuario"
+        value={usuario} onChange={e => setUsuario(e.target.value)} />
+      <input className="border rounded-lg w-full p-2 mb-2" placeholder="Contraseña" type="password"
+        value={pass} onChange={e => setPass(e.target.value)} onKeyDown={e => e.key === "Enter" && entrar()} />
+      {error && <p className="text-red-500 text-sm mb-2">{error}</p>}
+      <button className="bg-[#3E7CB1] text-white rounded-lg w-full p-2 font-bold" onClick={entrar}>Entrar</button>
+    </div>
+  );
+}
+
+// Toma la foto elegida del celular, la recorta cuadrada y la achica a 256x256 JPEG
+// (~10-15 KB) para guardarla como texto en la base de datos, sin Firebase Storage.
+function comprimirFoto(file, lado = 256) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("no se pudo leer el archivo"));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("el archivo no es una imagen válida"));
+      img.onload = () => {
+        const lado0 = Math.min(img.width, img.height);
+        const sx = (img.width - lado0) / 2;
+        const sy = (img.height - lado0) * 0.25;
+        const canvas = document.createElement("canvas");
+        canvas.width = lado;
+        canvas.height = lado;
+        canvas.getContext("2d").drawImage(img, sx, sy, lado0, lado0, 0, 0, lado, lado);
+        resolve(canvas.toDataURL("image/jpeg", 0.8));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// ============ ADMIN: JUGADORES ============
+function AdminJugadores({ jugadores }) {
+  const vacio = { nombre: "", foto: "", calidad: 3, arquero: false };
+  const [form, setForm] = useState(vacio);
+  const [editId, setEditId] = useState(null);
+
+  const subirFoto = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    try {
+      const dataUrl = await comprimirFoto(file);
+      setForm(f => ({ ...f, foto: dataUrl }));
+    } catch (err) {
+      alert("No se pudo cargar la foto: " + err.message);
+    }
+  };
+
+  const guardar = () => {
+    try {
+      if (!form.nombre.trim()) return alert("Poné un nombre");
+      const fotoFinal = convertirLinkFoto(form.foto.trim());
+      const onError = (err) => alert("No se pudo guardar: " + err.message);
+      if (editId) {
+        db.ref("jugadores/" + editId).update({
+          nombre: form.nombre, foto: fotoFinal, calidad: form.calidad, arquero: form.arquero
+        }).then(() => alert("Jugador actualizado")).catch(onError);
+      } else {
+        db.ref("jugadores").push({
+          nombre: form.nombre, foto: fotoFinal, calidad: form.calidad, arquero: form.arquero,
+          pj: 0, pg: 0, pe: 0, pp: 0, puntos: 0, goles: 0, ultimos: [], historial: []
+        }).then(() => alert("Jugador agregado")).catch(onError);
+      }
+      setForm(vacio);
+      setEditId(null);
+    } catch (err) {
+      alert("Error al guardar: " + err.message);
+    }
+  };
+
+  const editar = (j) => {
+    setForm({ nombre: j.nombre, foto: j.foto || "", calidad: j.calidad || 3, arquero: !!j.arquero });
+    setEditId(j.id);
+  };
+
+  const borrar = (id) => {
+    if (confirm("¿Borrar este jugador? Se pierde su historial.")) db.ref("jugadores/" + id).remove();
+  };
+
+  return (
+    <div>
+      <div className="bg-white p-4 rounded-2xl shadow mb-4">
+        <h3 className="font-bold mb-2">{editId ? "Editar jugador" : "Nuevo jugador"}</h3>
+        <input className="border rounded-lg w-full p-2 mb-2" placeholder="Nombre"
+          value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value })} />
+        <div className="flex items-center gap-3 mb-2">
+          <img src={form.foto || "https://via.placeholder.com/56?text=%20"} className="foto-jugador" alt="Vista previa" />
+          <label className="bg-[#EAF4FC] border border-[#3E7CB1] text-[#1B4B7A] rounded-lg px-3 py-2 text-sm font-bold cursor-pointer">
+            📷 Subir foto
+            <input type="file" accept="image/*" className="hidden" onChange={subirFoto} />
+          </label>
+          {form.foto && (
+            <button type="button" className="text-red-600 text-sm" onClick={() => setForm({ ...form, foto: "" })}>Quitar</button>
+          )}
+        </div>
+        <input className="border rounded-lg w-full p-2 mb-1" placeholder="…o pegá un link de imagen (opcional)"
+          value={form.foto.startsWith("data:") ? "" : form.foto}
+          onChange={e => setForm({ ...form, foto: e.target.value })} />
+        <p className="text-xs text-gray-400 mb-2">Si pegás un link de Drive, el archivo tiene que estar compartido como "Cualquier persona con el enlace".</p>
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-sm">Calidad:</span>
+          <Estrellas n={form.calidad} onClick={(n) => setForm({ ...form, calidad: n })} />
+        </div>
+        <label className="flex items-center gap-2 mb-3 text-sm">
+          <input type="checkbox" checked={form.arquero}
+            onChange={e => setForm({ ...form, arquero: e.target.checked })} />
+          Es arquero 🧤
+        </label>
+        <div className="flex gap-2">
+          <button className="bg-[#3E7CB1] text-white rounded-lg px-4 py-2 font-bold" onClick={guardar}>
+            {editId ? "Guardar cambios" : "Agregar jugador"}
+          </button>
+          {editId && (
+            <button className="bg-gray-300 rounded-lg px-4 py-2" onClick={() => { setForm(vacio); setEditId(null); }}>
+              Cancelar
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl shadow divide-y">
+        {jugadores.map(j => (
+          <div key={j.id} className="flex items-center gap-3 p-3">
+            <img src={j.foto || "https://via.placeholder.com/56?text=%20"} className="foto-jugador" alt={j.nombre} />
+            <div className="flex-1">
+              <p className="font-semibold">{j.nombre} {j.arquero && "🧤"}</p>
+              <Estrellas n={j.calidad} />
+            </div>
+            <button className="text-blue-600 text-sm mr-2" onClick={() => editar(j)}>Editar</button>
+            <button className="text-red-600 text-sm" onClick={() => borrar(j.id)}>Borrar</button>
+          </div>
+        ))}
+        {jugadores.length === 0 && <p className="p-4 text-center text-gray-400">No hay jugadores todavía</p>}
+      </div>
+    </div>
+  );
+}
+
+// ============ CANCHA (armado manual) ============
+// fichas: [{ id, nombre, foto, x, y, equipo }]  (x, y en % de la cancha)
+// Mitad de arriba = Equipo A, mitad de abajo = Equipo B.
+function Cancha({ fichas, editable, selId, onSelect, onMove, onTapCancha }) {
+  const ref = useRef(null);
+  const drag = useRef(null);
+
+  const posDe = (e) => {
+    const r = ref.current.getBoundingClientRect();
+    return {
+      x: Math.min(94, Math.max(6, ((e.clientX - r.left) / r.width) * 100)),
+      y: Math.min(95, Math.max(5, ((e.clientY - r.top) / r.height) * 100))
+    };
+  };
+
+  return (
+    <div className="w-full mx-auto" style={{ maxWidth: 420 }}>
+    <div
+      ref={ref}
+      className="relative w-full rounded-xl overflow-hidden select-none"
+      style={{ paddingTop: "150%", background: "#2f8f4e", touchAction: editable ? "pan-y" : "auto" }}
+      onClick={(e) => { if (editable && onTapCancha) onTapCancha(posDe(e)); }}
+    >
+      <svg viewBox="0 0 100 150" className="absolute w-full h-full" style={{ top: 0, left: 0, pointerEvents: "none" }}>
+        {Array.from({ length: 10 }).map((_, i) => (
+          <rect key={i} x="0" y={i * 15} width="100" height="15" fill={i % 2 ? "#2f8f4e" : "#35a057"} />
+        ))}
+        <g fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth="0.6">
+          <rect x="3" y="3" width="94" height="144" />
+          <line x1="3" y1="75" x2="97" y2="75" />
+          <circle cx="50" cy="75" r="12" />
+          <rect x="25" y="3" width="50" height="22" />
+          <rect x="38" y="3" width="24" height="8" />
+          <path d="M 41.06 25 A 12 12 0 0 0 58.94 25" />
+          <rect x="25" y="125" width="50" height="22" />
+          <rect x="38" y="139" width="24" height="8" />
+          <path d="M 41.06 125 A 12 12 0 0 1 58.94 125" />
+        </g>
+        <g fill="rgba(255,255,255,0.9)">
+          <circle cx="50" cy="75" r="0.9" />
+          <circle cx="50" cy="17" r="0.9" />
+          <circle cx="50" cy="133" r="0.9" />
+        </g>
+      </svg>
+
+      <span className="absolute text-[11px] font-extrabold tracking-widest" style={{ top: 8, left: 10, color: "rgba(255,255,255,0.75)" }}>EQUIPO A</span>
+      <span className="absolute text-[11px] font-extrabold tracking-widest" style={{ bottom: 8, left: 10, color: "rgba(255,255,255,0.75)" }}>EQUIPO B</span>
+
+      {fichas.map(f => (
+        <div
+          key={f.id}
+          className={"ficha" + (editable ? " editable" : "") + (selId === f.id ? " sel" : "")}
+          style={{ left: f.x + "%", top: f.y + "%" }}
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => {
+            if (!editable) return;
+            e.stopPropagation();
+            e.currentTarget.setPointerCapture(e.pointerId);
+            drag.current = { id: f.id, sx: e.clientX, sy: e.clientY, moved: false };
+          }}
+          onPointerMove={(e) => {
+            const d = drag.current;
+            if (!d || d.id !== f.id) return;
+            if (!d.moved && Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 6) return;
+            d.moved = true;
+            onMove(f.id, posDe(e));
+          }}
+          onPointerUp={() => {
+            const d = drag.current;
+            drag.current = null;
+            if (d && !d.moved && onSelect) onSelect(f.id);
+          }}
+          onPointerCancel={() => { drag.current = null; }}
+        >
+          {f.foto
+            ? <img src={f.foto} alt={f.nombre} className="ficha-foto" draggable="false"
+                style={{ borderColor: f.equipo === "A" ? "#3b82f6" : "#ef4444" }} />
+            : <div className="ficha-foto" style={{ borderColor: f.equipo === "A" ? "#3b82f6" : "#ef4444" }}>
+                {(f.nombre || "?").charAt(0).toUpperCase()}
+              </div>}
+          <span className="ficha-nombre">{f.nombre}{f.arquero ? " 🧤" : ""}</span>
+        </div>
+      ))}
+    </div>
+    </div>
+  );
+}
+
+// Vista de solo lectura de un partido armado a mano
+function fichasDePartido(partido, jugadores) {
+  const pos = partido.posiciones || {};
+  return Object.keys(pos).map(id => {
+    const j = jugadores.find(x => x.id === id);
+    if (!j) return null;
+    return {
+      id, nombre: j.nombre, foto: j.foto, arquero: j.arquero,
+      x: pos[id].x, y: pos[id].y,
+      equipo: (partido.equipoA || []).includes(id) ? "A" : "B"
+    };
+  }).filter(Boolean);
+}
+
+function CanchaToggle({ partido, jugadores }) {
+  const [abierta, setAbierta] = useState(false);
+  if (!partido.posiciones) return null;
+  return (
+    <div className="mt-2">
+      <button className="text-blue-600 text-sm font-bold" onClick={() => setAbierta(!abierta)}>
+        {abierta ? "Ocultar cancha" : "⚽ Ver cancha"}
+      </button>
+      {abierta && <div className="mt-2"><Cancha fichas={fichasDePartido(partido, jugadores)} /></div>}
+    </div>
+  );
+}
+
+function CanchaModal({ partido, jugadores, onClose }) {
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-card p-5" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-extrabold text-lg">⚽ Cancha · {partido.fecha}</h2>
+          <button className="text-slate-400 text-2xl leading-none px-2" onClick={onClose} aria-label="Cerrar">✕</button>
+        </div>
+        <Cancha fichas={fichasDePartido(partido, jugadores)} />
+        <div className="grid grid-cols-2 gap-2 mt-3 text-sm">
+          <div className="glass rounded-xl p-3"><span className="text-[#22D3EE] font-bold">Equipo A</span><br />{(partido.equipoA || []).map(id => (jugadores.find(j => j.id === id) || {}).nombre || "?").join(", ")}</div>
+          <div className="glass rounded-xl p-3"><span className="text-[#FFD700] font-bold">Equipo B</span><br />{(partido.equipoB || []).map(id => (jugadores.find(j => j.id === id) || {}).nombre || "?").join(", ")}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============ EDICIÓN DE PARTIDOS (cambios de último momento) ============
+// Idea: cada jugador aporta a la tabla según el equipo en el que estuvo y el resultado.
+// Al editar una fecha ya cargada se RESTA lo que había aportado y se SUMA lo nuevo.
+const PUNTOS_TIPO = { V: 3, E: 1, D: 0 };
+
+function tipoDe(resultado, lado) {
+  if (resultado === "E") return "E";
+  return resultado === lado ? "V" : "D";
+}
+
+function ladoEn(partido, id) {
+  if ((partido.equipoA || []).includes(id)) return "A";
+  if ((partido.equipoB || []).includes(id)) return "B";
+  return null;
+}
+
+// Entrada del historial del jugador que corresponde a este partido
+// (los partidos cargados antes de esta versión no tienen partidoId: se busca por fecha y resultado)
+function indiceHistorial(historial, partido, tipo) {
+  let i = historial.findIndex(h => h.partidoId === partido.id);
+  if (i === -1) i = historial.findIndex(h => !h.partidoId && h.fecha === partido.fecha && h.resultado === tipo);
+  return i;
+}
+
+function golesEnPartido(partido, j) {
+  const lado = ladoEn(partido, j.id);
+  if (lado && partido.finalizado) {
+    const h = j.historial || [];
+    const i = indiceHistorial(h, partido, tipoDe(partido.resultado, lado));
+    if (i !== -1) return h[i].goles || 0;
+  }
+  return (partido.goles && partido.goles[j.id]) || 0;
+}
+
+function posInicial(lado, cantidad) {
+  const xs = [20, 50, 80, 35, 65];
+  return { x: xs[cantidad % xs.length], y: lado === "A" ? 18 + (cantidad % 2) * 14 : 82 - (cantidad % 2) * 14 };
+}
+
+function espejarPos(pos, ladoNuevo) {
+  const y = 100 - pos.y;
+  return { x: pos.x, y: ladoNuevo === "A" ? Math.min(y, 45) : Math.max(y, 55) };
+}
+
+// Devuelve { updates, resumen }: updates es un objeto de rutas de Firebase para aplicar de una sola vez
+// (equipos nuevos + ajuste de estadísticas), y resumen una lista de frases para confirmar con el admin.
+function calcularCambiosPartido(partido, A2, B2, goles2, pos2, jugadores) {
+  const updates = {};
+  const resumen = [];
+  const base = "partidos/" + partido.id + "/";
+  updates[base + "equipoA"] = A2;
+  updates[base + "equipoB"] = B2;
+  updates[base + "disponibles"] = [...A2, ...B2];
+  if (pos2) {
+    const limpia = {};
+    [...A2, ...B2].forEach(id => { if (pos2[id]) limpia[id] = pos2[id]; });
+    updates[base + "posiciones"] = limpia;
+  }
+  if (!partido.finalizado) return { updates, resumen };
+
+  const todos = [...new Set([...(partido.equipoA || []), ...(partido.equipoB || []), ...A2, ...B2])];
+  const golesFinal = {};
+
+  todos.forEach(id => {
+    const j = jugadores.find(x => x.id === id);
+    if (!j) return;
+    const ladoViejo = ladoEn(partido, id);
+    const ladoNuevo = A2.includes(id) ? "A" : B2.includes(id) ? "B" : null;
+    const tipoViejo = ladoViejo ? tipoDe(partido.resultado, ladoViejo) : null;
+    const tipoNuevo = ladoNuevo ? tipoDe(partido.resultado, ladoNuevo) : null;
+    const golViejo = ladoViejo ? golesEnPartido(partido, j) : 0;
+    const golNuevo = !ladoNuevo ? 0 : (goles2 && goles2[id] !== undefined ? goles2[id] : golViejo);
+    if (ladoNuevo) golesFinal[id] = golNuevo;
+    if (tipoViejo === tipoNuevo && golViejo === golNuevo) return; // este jugador no cambia nada
+
+    let pj = j.pj || 0, pg = j.pg || 0, pe = j.pe || 0, pp = j.pp || 0, puntos = j.puntos || 0, goles = j.goles || 0;
+    const h = [...(j.historial || [])];
+    let idx = -1;
+    const campo = { V: "pg", E: "pe", D: "pp" };
+    const sumar = (tipo, signo) => {
+      pj += signo;
+      if (tipo === "V") pg += signo; else if (tipo === "E") pe += signo; else pp += signo;
+      puntos += signo * PUNTOS_TIPO[tipo];
+    };
+
+    if (tipoViejo) { idx = indiceHistorial(h, partido, tipoViejo); sumar(tipoViejo, -1); goles -= golViejo; }
+    if (tipoNuevo) {
+      sumar(tipoNuevo, +1); goles += golNuevo;
+      const entrada = { fecha: partido.fecha, resultado: tipoNuevo, goles: golNuevo, partidoId: partido.id };
+      if (idx !== -1) h[idx] = entrada; else h.push(entrada);
+    } else if (idx !== -1) {
+      h.splice(idx, 1);
+    }
+
+    const jb = "jugadores/" + id + "/";
+    updates[jb + "pj"] = Math.max(0, pj);
+    updates[jb + "pg"] = Math.max(0, pg);
+    updates[jb + "pe"] = Math.max(0, pe);
+    updates[jb + "pp"] = Math.max(0, pp);
+    updates[jb + "puntos"] = Math.max(0, puntos);
+    updates[jb + "goles"] = Math.max(0, goles);
+    updates[jb + "historial"] = h.length ? h : null;
+    const orden = h.map((x, i) => ({ ...x, i })).sort((a, b) => (b.fecha || "").localeCompare(a.fecha || "") || b.i - a.i);
+    const ult = orden.slice(0, 5).map(x => x.resultado);
+    updates[jb + "ultimos"] = ult.length ? ult : null;
+
+    if (tipoViejo && !tipoNuevo) {
+      resumen.push("➖ " + j.nombre + ": sale de la fecha (se le restan " + PUNTOS_TIPO[tipoViejo] + " pts" + (golViejo ? " y " + golViejo + " gol(es)" : "") + ")");
+    } else if (!tipoViejo && tipoNuevo) {
+      resumen.push("➕ " + j.nombre + ": entra al Equipo " + ladoNuevo + " (suma " + PUNTOS_TIPO[tipoNuevo] + " pts" + (golNuevo ? " y " + golNuevo + " gol(es)" : "") + ")");
+    } else if (tipoViejo !== tipoNuevo) {
+      resumen.push("🔁 " + j.nombre + ": pasa al Equipo " + ladoNuevo + " (de " + PUNTOS_TIPO[tipoViejo] + " a " + PUNTOS_TIPO[tipoNuevo] + " pts)");
+    } else {
+      resumen.push("⚽ " + j.nombre + ": cambian sus goles (" + golViejo + " → " + golNuevo + ")");
+    }
+  });
+
+  updates[base + "goles"] = golesFinal;
+  return { updates, resumen };
+}
+
+// Editor de los equipos de una fecha (pendiente o ya jugada)
+function EditorPartido({ partido, jugadores, onClose }) {
+  const [A, setA] = useState(partido.equipoA || []);
+  const [B, setB] = useState(partido.equipoB || []);
+  const [pos, setPos] = useState(partido.posiciones || null);
+  const [goles, setGoles] = useState(() => {
+    const m = {};
+    if (partido.finalizado) {
+      [...(partido.equipoA || []), ...(partido.equipoB || [])].forEach(id => {
+        const j = jugadores.find(x => x.id === id);
+        m[id] = j ? golesEnPartido(partido, j) : 0;
+      });
+    }
+    return m;
+  });
+  const [filtro, setFiltro] = useState("");
+  const [guardando, setGuardando] = useState(false);
+
+  const jug = (id) => jugadores.find(j => j.id === id) || { id, nombre: "?" };
+
+  const mover = (id) => {
+    const deA = A.includes(id);
+    setA(a => deA ? a.filter(x => x !== id) : [...a, id]);
+    setB(b => deA ? [...b, id] : b.filter(x => x !== id));
+    if (pos && pos[id]) setPos(p => ({ ...p, [id]: espejarPos(p[id], deA ? "B" : "A") }));
+  };
+  const sacar = (id) => {
+    setA(a => a.filter(x => x !== id));
+    setB(b => b.filter(x => x !== id));
+    if (pos) setPos(p => { const c = { ...p }; delete c[id]; return c; });
+    setGoles(g => { const c = { ...g }; delete c[id]; return c; });
+  };
+  const agregar = (id, lado) => {
+    if (lado === "A") setA(a => [...a, id]); else setB(b => [...b, id]);
+    if (pos) setPos(p => ({ ...p, [id]: posInicial(lado, (lado === "A" ? A : B).length) }));
+    if (partido.finalizado) setGoles(g => ({ ...g, [id]: 0 }));
+  };
+  // arrastrar en la cancha: la mitad define el equipo
+  const moverEnCancha = (id, nueva) => {
+    setPos(p => ({ ...p, [id]: nueva }));
+    const lado = nueva.y < 50 ? "A" : "B";
+    setA(a => lado === "A" ? (a.includes(id) ? a : [...a, id]) : a.filter(x => x !== id));
+    setB(b => lado === "B" ? (b.includes(id) ? b : [...b, id]) : b.filter(x => x !== id));
+  };
+
+  const guardar = () => {
+    if (A.length === 0 || B.length === 0) return alert("Cada equipo necesita al menos un jugador");
+    const { updates, resumen } = calcularCambiosPartido(partido, A, B, goles, pos, jugadores);
+    if (partido.finalizado && resumen.length > 0) {
+      if (!confirm("Esta fecha ya tiene resultado. Se van a ajustar las estadísticas:\n\n" + resumen.join("\n") + "\n\n¿Confirmar?")) return;
+    }
+    setGuardando(true);
+    db.ref().update(updates)
+      .then(() => { onClose(); alert("Equipos actualizados" + (resumen.length ? " y estadísticas ajustadas ✅" : " ✅")); })
+      .catch(err => { setGuardando(false); alert("No se pudo guardar: " + err.message); });
+  };
+
+  const fuera = jugadores.filter(j =>
+    !A.includes(j.id) && !B.includes(j.id) &&
+    j.nombre.toLowerCase().includes(filtro.trim().toLowerCase())
+  );
+  const fichas = pos ? Object.keys(pos)
+    .filter(id => A.includes(id) || B.includes(id))
+    .map(id => ({
+      id, nombre: jug(id).nombre, foto: jug(id).foto, arquero: jug(id).arquero,
+      x: pos[id].x, y: pos[id].y, equipo: A.includes(id) ? "A" : "B"
+    })) : [];
+
+  return (
+    <div className="bg-white rounded-2xl shadow p-3 border-2 border-yellow-400">
+      <div className="flex items-center justify-between mb-2">
+        <p className="font-bold">✏️ Editar equipos · {partido.fecha}</p>
+        <button className="text-gray-500 text-sm underline" onClick={onClose}>Cancelar</button>
+      </div>
+      {partido.finalizado && (
+        <p className="text-xs bg-yellow-50 border border-yellow-300 text-yellow-800 rounded-lg p-2 mb-2">
+          Esta fecha ya tiene resultado. Al guardar, al que sale se le restan los puntos y goles de esta fecha, y al que entra se le suman. Podés corregir los goles de cada uno.
+        </p>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {["A", "B"].map(lado => {
+          const ids = lado === "A" ? A : B;
+          return (
+            <div key={lado} className={"rounded-lg p-2 " + (lado === "A" ? "bg-blue-50" : "bg-red-50")}>
+              <p className={"font-bold mb-1 " + (lado === "A" ? "text-blue-700" : "text-red-700")}>Equipo {lado} ({ids.length})</p>
+              {ids.map(id => (
+                <div key={id} className="flex items-center gap-1 text-sm py-1">
+                  <span className="flex-1 truncate">{jug(id).nombre}{jug(id).arquero ? " 🧤" : ""}</span>
+                  {partido.finalizado && (
+                    <label className="flex items-center gap-1 text-xs text-gray-500">⚽
+                      <input type="number" min="0" className="border rounded w-12 p-1 text-center text-sm"
+                        value={goles[id] || 0}
+                        onChange={e => setGoles(g => ({ ...g, [id]: Math.max(0, parseInt(e.target.value || "0", 10) || 0) }))} />
+                    </label>
+                  )}
+                  <button className="px-2 py-1 bg-white border rounded text-xs font-bold" onClick={() => mover(id)}>{lado === "A" ? "→ B" : "← A"}</button>
+                  <button className="px-2 py-1 bg-white border rounded text-xs font-bold text-red-600" onClick={() => sacar(id)}>✕</button>
+                </div>
+              ))}
+              {ids.length === 0 && <p className="text-xs text-gray-400">Sin jugadores</p>}
+            </div>
+          );
+        })}
+      </div>
+
+      <p className="text-sm font-semibold mt-3 mb-1">Agregar jugador</p>
+      <input className="border rounded-lg w-full p-2 mb-2 text-sm" placeholder="Buscar por nombre…"
+        value={filtro} onChange={e => setFiltro(e.target.value)} />
+      <div className="max-h-48 overflow-y-auto border rounded-lg divide-y">
+        {fuera.map(j => (
+          <div key={j.id} className="flex items-center gap-2 p-2 text-sm">
+            <span className="flex-1">{j.nombre}{j.arquero ? " 🧤" : ""}</span>
+            <button className="px-3 py-1 bg-blue-100 text-blue-800 rounded font-bold text-xs" onClick={() => agregar(j.id, "A")}>+ A</button>
+            <button className="px-3 py-1 bg-red-100 text-red-800 rounded font-bold text-xs" onClick={() => agregar(j.id, "B")}>+ B</button>
+          </div>
+        ))}
+        {fuera.length === 0 && <p className="p-2 text-sm text-gray-400">No hay más jugadores para agregar</p>}
+      </div>
+
+      {pos && (
+        <div className="mt-3">
+          <p className="text-sm font-semibold mb-1">Cancha (arrastrá para mover; arriba A, abajo B)</p>
+          <Cancha fichas={fichas} editable onMove={moverEnCancha} />
+        </div>
+      )}
+
+      <div className="flex gap-2 mt-3">
+        <button className="bg-blue-600 text-white rounded-lg px-4 py-2 font-bold disabled:opacity-50" disabled={guardando} onClick={guardar}>
+          {guardando ? "Guardando…" : "Guardar cambios"}
+        </button>
+        <button className="bg-gray-300 rounded-lg px-4 py-2" onClick={onClose}>Cancelar</button>
+      </div>
+    </div>
+  );
+}
+
+// Panel de admin dentro del perfil del jugador: asignarlo (o sacarlo) de una fecha
+function AsignarFecha({ j, partidos, jugadores }) {
+  const lista = [...partidos].sort((a, b) => (b.fecha || "").localeCompare(a.fecha || ""));
+  const [pid, setPid] = useState(lista[0] ? lista[0].id : "");
+  const [gol, setGol] = useState(0);
+  const p = lista.find(x => x.id === pid);
+  const lado = p ? ladoEn(p, j.id) : null;
+
+  useEffect(() => {
+    const q = lista.find(x => x.id === pid);
+    setGol(q && q.finalizado && ladoEn(q, j.id) ? golesEnPartido(q, j) : 0);
+  }, [pid]);
+
+  if (lista.length === 0) {
+    return <p className="text-sm text-slate-400 mt-4">No hay fechas cargadas para asignar.</p>;
+  }
+
+  const aplicar = (destino) => {
+    if (!p) return;
+    const A = (p.equipoA || []).filter(x => x !== j.id);
+    const B = (p.equipoB || []).filter(x => x !== j.id);
+    if (destino === "A") A.push(j.id);
+    if (destino === "B") B.push(j.id);
+    if (A.length === 0 || B.length === 0) return alert("Cada equipo necesita al menos un jugador");
+
+    let pos = p.posiciones ? { ...p.posiciones } : null;
+    if (pos) {
+      if (!destino) delete pos[j.id];
+      else if (pos[j.id] && lado && lado !== destino) pos[j.id] = espejarPos(pos[j.id], destino);
+      else if (!pos[j.id]) pos[j.id] = posInicial(destino, (destino === "A" ? A : B).length - 1);
+    }
+
+    const { updates, resumen } = calcularCambiosPartido(p, A, B, p.finalizado && destino ? { [j.id]: gol } : null, pos, jugadores);
+    if (p.finalizado) {
+      if (resumen.length === 0 && lado === destino) return alert("No hay cambios para guardar");
+      if (!confirm("Fecha " + p.fecha + " (ya tiene resultado). Se van a ajustar las estadísticas:\n\n" + (resumen.join("\n") || "Cambia de equipo, sin cambio de puntos") + "\n\n¿Confirmar?")) return;
+    } else if (lado === destino) {
+      return alert("Ya está en ese equipo");
+    }
+    db.ref().update(updates)
+      .then(() => alert("Listo ✅"))
+      .catch(err => alert("No se pudo guardar: " + err.message));
+  };
+
+  const estado = !p ? "" : lado ? "Está en el Equipo " + lado : "No jugó esta fecha";
+
+  return (
+    <div className="mt-5 rounded-xl p-3" style={{ background: "rgba(255,215,0,0.08)", border: "1px solid rgba(255,215,0,0.3)" }}>
+      <h3 className="text-sm font-bold text-[#FFD700] mb-2">🛠️ Admin: asignar a una fecha</h3>
+      <select className="w-full rounded-lg p-2 mb-2 text-[#06131F] bg-white" value={pid} onChange={e => setPid(e.target.value)}>
+        {lista.map(x => (
+          <option key={x.id} value={x.id}>{x.fecha} {x.finalizado ? "✅ jugada" : "⏳ pendiente"}</option>
+        ))}
+      </select>
+      <p className="text-xs text-slate-300 mb-2">{estado}</p>
+      {p && p.finalizado && (
+        <label className="flex items-center gap-2 text-sm mb-2">⚽ Goles en esa fecha
+          <input type="number" min="0" className="rounded w-16 p-1 text-center text-[#06131F]" value={gol}
+            onChange={e => setGol(Math.max(0, parseInt(e.target.value || "0", 10) || 0))} />
+        </label>
+      )}
+      <div className="grid grid-cols-2 gap-2">
+        <button className="rounded-lg py-2 font-bold bg-[#22D3EE] text-[#06131F]" onClick={() => aplicar("A")}>
+          {lado === "A" ? "✔ Equipo A" : "Poner en Equipo A"}
+        </button>
+        <button className="rounded-lg py-2 font-bold bg-[#FFD700] text-[#06131F]" onClick={() => aplicar("B")}>
+          {lado === "B" ? "✔ Equipo B" : "Poner en Equipo B"}
+        </button>
+      </div>
+      {lado && (
+        <button className="mt-2 w-full rounded-lg py-2 text-sm font-bold bg-white/10 text-red-300" onClick={() => aplicar(null)}>
+          Sacar de esta fecha
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ============ ADMIN: FECHAS Y SORTEO ============
+function AdminFechas({ jugadores, partidos }) {
+  const [fecha, setFecha] = useState("");
+  const [seleccionados, setSeleccionados] = useState({});
+  const [preview, setPreview] = useState(null);
+  const [modo, setModo] = useState("sorteo"); // sorteo | manual
+  const [posiciones, setPosiciones] = useState({}); // { jugadorId: { x, y } } en % de la cancha
+  const [selPool, setSelPool] = useState(null);     // jugador elegido de la lista para ubicar
+  const [selFicha, setSelFicha] = useState(null);   // ficha elegida en la cancha
+  const [editandoId, setEditandoId] = useState(null);
+
+  const toggle = (id) => setSeleccionados(s => ({ ...s, [id]: !s[id] }));
+
+  const disponibles = jugadores.filter(j => seleccionados[j.id]);
+  const sinUbicar = disponibles.filter(j => !posiciones[j.id]);
+  const fichas = disponibles.filter(j => posiciones[j.id]).map(j => ({
+    id: j.id, nombre: j.nombre, foto: j.foto, arquero: j.arquero,
+    x: posiciones[j.id].x, y: posiciones[j.id].y,
+    equipo: posiciones[j.id].y < 50 ? "A" : "B"
+  }));
+  const fichasA = fichas.filter(f => f.equipo === "A");
+  const fichasB = fichas.filter(f => f.equipo === "B");
+  const calidadDe = (lista) => lista.reduce((s, f) => s + ((jugadores.find(j => j.id === f.id) || {}).calidad || 0), 0);
+
+  const moverFicha = (id, pos) => setPosiciones(p => ({ ...p, [id]: pos }));
+  const tocarCancha = (pos) => {
+    if (!selPool) return;
+    setPosiciones(p => ({ ...p, [selPool]: pos }));
+    setSelPool(null);
+  };
+  const sacarFicha = () => {
+    if (!selFicha) return;
+    setPosiciones(p => { const c = { ...p }; delete c[selFicha]; return c; });
+    setSelFicha(null);
+  };
+
+  const sortear = () => {
+    if (disponibles.length < 2) return alert("Seleccioná al menos 2 jugadores disponibles");
+    setPreview(armarEquipos(disponibles));
+  };
+
+  const guardarManual = () => {
+    if (fichasA.length === 0 || fichasB.length === 0) {
+      return alert("Poné al menos un jugador en cada mitad de la cancha (arriba Equipo A, abajo Equipo B)");
+    }
+    if (sinUbicar.length > 0 && !confirm("Quedan " + sinUbicar.length + " jugador(es) sin ubicar. Se van a dejar afuera de esta fecha. ¿Seguir?")) return;
+    const pos = {};
+    fichas.forEach(f => { pos[f.id] = { x: Math.round(f.x * 10) / 10, y: Math.round(f.y * 10) / 10 }; });
+    db.ref("partidos").push({
+      fecha,
+      disponibles: fichas.map(f => f.id),
+      equipoA: fichasA.map(f => f.id),
+      equipoB: fichasB.map(f => f.id),
+      posiciones: pos,
+      manual: true,
+      resultado: null,
+      finalizado: false
+    });
+    setFecha(""); setSeleccionados({}); setPosiciones({}); setSelPool(null); setSelFicha(null);
+    alert("Fecha creada con el armado manual");
+  };
+
+  const guardarFecha = () => {
+    if (!fecha) return alert("Elegí una fecha");
+    if (modo === "manual") return guardarManual();
+    if (!preview) return alert("Primero sorteá los equipos");
+    db.ref("partidos").push({
+      fecha,
+      disponibles: disponibles.map(j => j.id),
+      equipoA: preview.equipoA.map(j => j.id),
+      equipoB: preview.equipoB.map(j => j.id),
+      resultado: null,
+      finalizado: false
+    });
+    setFecha(""); setSeleccionados({}); setPreview(null);
+    alert("Fecha creada con los equipos sorteados");
+  };
+
+  const nombreDe = (id) => (jugadores.find(j => j.id === id) || {}).nombre || "?";
+
+  return (
+    <div>
+      <div className="bg-white p-4 rounded-2xl shadow mb-4">
+        <h3 className="font-bold mb-2">Nueva fecha</h3>
+        <input type="date" className="border rounded-lg p-2 mb-3"
+          value={fecha} onChange={e => setFecha(e.target.value)} />
+        <p className="text-sm font-semibold mb-1">Jugadores disponibles:</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">
+          {jugadores.map(j => (
+            <label key={j.id} className="flex items-center gap-2 text-sm bg-[#EAF4FC] rounded-lg p-2">
+              <input type="checkbox" checked={!!seleccionados[j.id]} onChange={() => toggle(j.id)} />
+              {j.nombre} {j.arquero && "🧤"}
+            </label>
+          ))}
+        </div>
+        <div className="flex gap-2 mb-3">
+          {[["sorteo", "🎲 Sortear"], ["manual", "✋ Armar a mano"]].map(([k, label]) => (
+            <button key={k}
+              className={`px-3 py-2 rounded-lg text-sm font-bold ${modo === k ? "bg-[#3E7CB1] text-white" : "bg-[#EAF4FC] text-[#1B4B7A]"}`}
+              onClick={() => setModo(k)}>
+              {label}
+            </button>
+          ))}
+        </div>
+        {modo === "sorteo" && (
+          <button className="bg-[#3E7CB1] text-white rounded-lg px-4 py-2 font-bold mr-2" onClick={sortear}>
+            Sortear equipos
+          </button>
+        )}
+        {modo === "sorteo" && preview && (
+          <button className="bg-blue-600 text-white rounded-lg px-4 py-2 font-bold" onClick={guardarFecha}>
+            Guardar fecha
+          </button>
+        )}
+
+        {modo === "sorteo" && preview && (
+          <div className="grid grid-cols-2 gap-3 mt-4">
+            <div className="bg-blue-50 rounded-lg p-3">
+              <p className="font-bold text-blue-700 mb-1">Equipo A</p>
+              {preview.equipoA.map(j => <p key={j.id} className="text-sm">{j.nombre} {j.arquero && "🧤"} <Estrellas n={j.calidad} /></p>)}
+            </div>
+            <div className="bg-red-50 rounded-lg p-3">
+              <p className="font-bold text-red-700 mb-1">Equipo B</p>
+              {preview.equipoB.map(j => <p key={j.id} className="text-sm">{j.nombre} {j.arquero && "🧤"} <Estrellas n={j.calidad} /></p>)}
+            </div>
+          </div>
+        )}
+
+        {modo === "manual" && (
+          <div className="mt-2">
+            {disponibles.length === 0 ? (
+              <p className="text-sm text-gray-500">Marcá arriba los jugadores disponibles y después ubicalos en la cancha.</p>
+            ) : (
+              <>
+                <p className="text-xs text-gray-500 mb-2">
+                  1) Tocá un jugador de la lista. 2) Tocá la cancha donde lo querés. Después podés arrastrarlo. La mitad de arriba es el Equipo A y la de abajo el Equipo B.
+                </p>
+
+                <p className="text-sm font-semibold mb-1">Sin ubicar ({sinUbicar.length}):</p>
+                <div className="flex flex-wrap gap-2 mb-3 min-h-[2rem]">
+                  {sinUbicar.map(j => (
+                    <button key={j.id}
+                      className={`rounded-full px-3 py-1 text-sm font-bold border ${selPool === j.id ? "bg-[#FFD700] border-yellow-500 text-[#06131F]" : "bg-[#EAF4FC] border-[#3E7CB1] text-[#1B4B7A]"}`}
+                      onClick={() => { setSelFicha(null); setSelPool(selPool === j.id ? null : j.id); }}>
+                      {j.nombre}{j.arquero ? " 🧤" : ""}
+                    </button>
+                  ))}
+                  {sinUbicar.length === 0 && <span className="text-sm text-green-700">Todos ubicados ✅</span>}
+                </div>
+
+                {selPool && <p className="text-sm font-bold text-yellow-700 mb-2">👆 Tocá la cancha para ubicar a {(jugadores.find(j => j.id === selPool) || {}).nombre}</p>}
+
+                <Cancha
+                  fichas={fichas}
+                  editable
+                  selId={selFicha}
+                  onSelect={(id) => { setSelPool(null); setSelFicha(selFicha === id ? null : id); }}
+                  onMove={moverFicha}
+                  onTapCancha={tocarCancha}
+                />
+
+                <div className="grid grid-cols-2 gap-2 mt-3 text-sm">
+                  <div className="bg-blue-50 rounded-lg p-2 text-blue-800"><b>Equipo A:</b> {fichasA.length} jugadores · ★ {calidadDe(fichasA)}</div>
+                  <div className="bg-red-50 rounded-lg p-2 text-red-800"><b>Equipo B:</b> {fichasB.length} jugadores · ★ {calidadDe(fichasB)}</div>
+                </div>
+
+                <div className="flex flex-wrap gap-2 mt-3">
+                  <button className="bg-blue-600 text-white rounded-lg px-4 py-2 font-bold" onClick={guardarFecha}>Guardar fecha</button>
+                  {selFicha && (
+                    <button className="bg-orange-500 text-white rounded-lg px-4 py-2 font-bold" onClick={sacarFicha}>Sacar de la cancha</button>
+                  )}
+                  {fichas.length > 0 && (
+                    <button className="bg-gray-300 rounded-lg px-4 py-2"
+                      onClick={() => { if (confirm("¿Sacar a todos de la cancha?")) { setPosiciones({}); setSelFicha(null); } }}>
+                      Limpiar cancha
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
+      <h3 className="font-bold mb-2">Fechas cargadas</h3>
+      <div className="space-y-3">
+        {partidos.slice().reverse().map(p => editandoId === p.id ? (
+          <EditorPartido key={p.id} partido={p} jugadores={jugadores} onClose={() => setEditandoId(null)} />
+        ) : (
+          <div key={p.id} className="bg-white rounded-2xl shadow p-3">
+            <div className="flex items-center justify-between gap-2">
+              <p className="font-semibold">{p.fecha} {p.finalizado ? "✅ Finalizado" : "⏳ Pendiente"}</p>
+              <button className="text-blue-600 text-sm font-bold whitespace-nowrap" onClick={() => setEditandoId(p.id)}>✏️ Editar equipos</button>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-sm mt-2">
+              <div><span className="font-bold text-blue-700">Equipo A:</span> {(p.equipoA || []).map(nombreDe).join(", ")}</div>
+              <div><span className="font-bold text-red-700">Equipo B:</span> {(p.equipoB || []).map(nombreDe).join(", ")}</div>
+            </div>
+            <CanchaToggle partido={p} jugadores={jugadores} />
+            {p.finalizado && (
+              <p className="text-sm mt-1 text-gray-600">
+                Resultado: {p.resultado === "A" ? "Ganó Equipo A" : p.resultado === "B" ? "Ganó Equipo B" : "Empate"}
+              </p>
+            )}
+          </div>
+        ))}
+        {partidos.length === 0 && <p className="text-gray-400 text-center">No hay fechas cargadas</p>}
+      </div>
+    </div>
+  );
+}
+
+// ============ ADMIN: RESULTADOS ============
+function FilaGoles({ nombre, valor, onChange }) {
+  return (
+    <div className="flex items-center justify-between text-sm py-1">
+      <span>{nombre}</span>
+      <input
+        type="number" min="0" className="border rounded-lg w-16 p-1 text-center"
+        value={valor} onChange={e => onChange(parseInt(e.target.value || "0", 10))}
+      />
+    </div>
+  );
+}
+
+function AdminResultados({ jugadores, partidos }) {
+  const pendientes = partidos.filter(p => !p.finalizado);
+  const [golesPorPartido, setGolesPorPartido] = useState({});
+  const [editandoId, setEditandoId] = useState(null);
+
+  const setGol = (partidoId, jugadorId, valor) => {
+    setGolesPorPartido(g => ({
+      ...g,
+      [partidoId]: { ...(g[partidoId] || {}), [jugadorId]: valor }
+    }));
+  };
+
+  const cargarResultado = (partido, resultado) => {
+    // resultado: "A" (ganó A), "B" (ganó B), "E" (empate)
+    if (!confirm("¿Confirmar este resultado? No se puede deshacer.")) return;
+
+    const golesDeEsteMatch = golesPorPartido[partido.id] || {};
+
+    const actualizar = (id, tipo) => {
+      const j = jugadores.find(x => x.id === id);
+      if (!j) return;
+      const puntosGanados = tipo === "V" ? 3 : tipo === "E" ? 1 : 0;
+      const golesEnEstePartido = golesDeEsteMatch[id] || 0;
+      const nuevos = {
+        pj: (j.pj || 0) + 1,
+        pg: (j.pg || 0) + (tipo === "V" ? 1 : 0),
+        pe: (j.pe || 0) + (tipo === "E" ? 1 : 0),
+        pp: (j.pp || 0) + (tipo === "D" ? 1 : 0),
+        puntos: (j.puntos || 0) + puntosGanados,
+        goles: (j.goles || 0) + golesEnEstePartido,
+        ultimos: [tipo, ...(j.ultimos || [])].slice(0, 5),
+        historial: [...(j.historial || []), { fecha: partido.fecha, resultado: tipo, goles: golesEnEstePartido, partidoId: partido.id }]
+      };
+      db.ref("jugadores/" + id).update(nuevos);
+    };
+
+    const equipoA = partido.equipoA || [];
+    const equipoB = partido.equipoB || [];
+
+    if (resultado === "E") {
+      equipoA.forEach(id => actualizar(id, "E"));
+      equipoB.forEach(id => actualizar(id, "E"));
+    } else if (resultado === "A") {
+      equipoA.forEach(id => actualizar(id, "V"));
+      equipoB.forEach(id => actualizar(id, "D"));
+    } else {
+      equipoA.forEach(id => actualizar(id, "D"));
+      equipoB.forEach(id => actualizar(id, "V"));
+    }
+
+    const golesFinal = {};
+    [...equipoA, ...equipoB].forEach(id => { golesFinal[id] = golesDeEsteMatch[id] || 0; });
+    db.ref("partidos/" + partido.id).update({ resultado, finalizado: true, goles: golesFinal });
+    setGolesPorPartido(g => { const copia = { ...g }; delete copia[partido.id]; return copia; });
+  };
+
+  const jugadorDe = (id) => jugadores.find(j => j.id === id) || { id, nombre: "?" };
+
+  return (
+    <div className="space-y-3">
+      <h3 className="font-bold mb-2">Cargar resultado</h3>
+      {pendientes.map(p => {
+        const goles = golesPorPartido[p.id] || {};
+        if (editandoId === p.id) {
+          return <EditorPartido key={p.id} partido={p} jugadores={jugadores} onClose={() => setEditandoId(null)} />;
+        }
+        return (
+          <div key={p.id} className="bg-white rounded-2xl shadow p-3">
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <p className="font-semibold">{p.fecha}</p>
+              <button className="text-blue-600 text-sm font-bold whitespace-nowrap" onClick={() => setEditandoId(p.id)}>✏️ Editar equipos</button>
+            </div>
+            <p className="text-xs text-gray-500 mb-1">Goles de cada jugador en este partido (opcional):</p>
+            <div className="grid grid-cols-2 gap-3 text-sm mb-3">
+              <div>
+                <p className="font-bold text-blue-700 mb-1">Equipo A</p>
+                {(p.equipoA || []).map(id => (
+                  <FilaGoles key={id} nombre={jugadorDe(id).nombre}
+                    valor={goles[id] || 0}
+                    onChange={v => setGol(p.id, id, v)} />
+                ))}
+              </div>
+              <div>
+                <p className="font-bold text-red-700 mb-1">Equipo B</p>
+                {(p.equipoB || []).map(id => (
+                  <FilaGoles key={id} nombre={jugadorDe(id).nombre}
+                    valor={goles[id] || 0}
+                    onChange={v => setGol(p.id, id, v)} />
+                ))}
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button className="bg-blue-600 text-white rounded-lg px-3 py-2 text-sm font-bold" onClick={() => cargarResultado(p, "A")}>Ganó Equipo A</button>
+              <button className="bg-gray-500 text-white rounded-lg px-3 py-2 text-sm font-bold" onClick={() => cargarResultado(p, "E")}>Empate</button>
+              <button className="bg-red-600 text-white rounded-lg px-3 py-2 text-sm font-bold" onClick={() => cargarResultado(p, "B")}>Ganó Equipo B</button>
+            </div>
+          </div>
+        );
+      })}
+      {pendientes.length === 0 && <p className="text-gray-400 text-center">No hay fechas pendientes de resultado</p>}
+    </div>
+  );
+}
+
+// ============ ADMIN: TEMPORADA ============
+function AdminTemporada({ jugadores, partidos, temporadas }) {
+  const [nombre, setNombre] = useState("");
+  const [imagen, setImagen] = useState(null);
+  const tabla = useMemo(() => ordenarTabla(jugadores).filter(j => (j.pj || 0) > 0), [jugadores]);
+  const premios = useMemo(() => calcularPremios(jugadores), [jugadores]);
+  const pendientes = partidos.filter(p => !p.finalizado).length;
+  const nombreFinal = nombre.trim() || ("Temporada " + (temporadas.length + 1));
+
+  const terminar = () => {
+    if (premios.length === 0) return alert("Todavía no hay partidos jugados en esta temporada.");
+    if (!confirm('¿Terminar "' + nombreFinal + '"?\n\nSe reparten los premios, el puntero se lleva la corona 👑 y se reinician las tablas. No se puede deshacer.')) return;
+
+    const key = db.ref("temporadas").push().key;
+    const updates = {};
+
+    // 1) Foto final de la temporada + premios
+    const datosTemporada = {
+      nombre: nombreFinal,
+      cerradaEn: new Date().toISOString(),
+      tabla: tabla.map(j => ({
+        id: j.id, nombre: j.nombre, foto: j.foto || "", arquero: !!j.arquero,
+        pj: j.pj || 0, pg: j.pg || 0, pe: j.pe || 0, pp: j.pp || 0,
+        puntos: j.puntos || 0, goles: j.goles || 0,
+        promedio: Number(j.promedio.toFixed(2))
+      })),
+      premios
+    };
+    updates["temporadas/" + key] = datosTemporada;
+
+    // 2) Reinicio de estadísticas (la calidad, la foto y el arquero se mantienen)
+    jugadores.forEach(j => {
+      const base = "jugadores/" + j.id + "/";
+      updates[base + "pj"] = 0;
+      updates[base + "pg"] = 0;
+      updates[base + "pe"] = 0;
+      updates[base + "pp"] = 0;
+      updates[base + "puntos"] = 0;
+      updates[base + "goles"] = 0;
+      updates[base + "ultimos"] = null;
+      updates[base + "historial"] = null;
+    });
+
+    // 3) Los partidos ya jugados se archivan; las fechas pendientes pasan a la temporada nueva
+    partidos.filter(p => p.finalizado).forEach(p => {
+      updates["partidos/" + p.id + "/archivada"] = key;
+    });
+
+    db.ref().update(updates)
+      .then(() => { setNombre(""); setImagen({ id: key, recien: true, ...datosTemporada }); })
+      .catch(err => alert("No se pudo cerrar la temporada: " + err.message));
+  };
+
+  const ordenadas = [...temporadas].sort((a, b) => (b.cerradaEn || "").localeCompare(a.cerradaEn || ""));
+
+  return (
+    <div>
+      <div className="bg-white p-4 rounded-2xl shadow mb-4">
+        <h3 className="font-bold mb-2">Terminar temporada</h3>
+        <input className="border rounded-lg w-full p-2 mb-3"
+          placeholder={"Nombre (por defecto: Temporada " + (temporadas.length + 1) + ")"}
+          value={nombre} onChange={e => setNombre(e.target.value)} />
+
+        <p className="text-sm font-semibold mb-1">Premios que se van a repartir:</p>
+        {premios.length > 0 ? (
+          <div className="bg-[#EAF4FC] rounded-lg p-3 mb-3 space-y-1">
+            {premios.map((p, i) => (
+              <p key={i} className="text-sm">
+                {PREMIOS_META[p.tipo].icono} <b>{PREMIOS_META[p.tipo].nombre}:</b> {p.nombre}
+              </p>
+            ))}
+          </div>
+        ) : <p className="text-sm text-gray-400 mb-3">Todavía no hay partidos jugados.</p>}
+
+        <p className="text-xs text-gray-500 mb-3">
+          Mejor arquero y equipo ideal (1 arquero + 4 de campo) salen por promedio, entre quienes jugaron al menos la mitad de los partidos del que más jugó.
+          {pendientes > 0 && " Las " + pendientes + " fecha(s) pendientes se mantienen para la temporada nueva."}
+        </p>
+
+        <button className="bg-yellow-500 text-white rounded-lg px-4 py-2 font-bold" onClick={terminar}>
+          🏁 Terminar temporada y premiar
+        </button>
+      </div>
+
+      <h3 className="font-bold mb-2">Temporadas anteriores</h3>
+      <div className="bg-white rounded-2xl shadow divide-y">
+        {ordenadas.map(t => {
+          const campeon = (t.premios || []).find(p => p.tipo === "campeon");
+          return (
+            <div key={t.id} className="p-3 flex items-center justify-between gap-2 text-sm">
+              <span className="font-semibold">{t.nombre}</span>
+              <span className="flex-1 text-right">👑 {campeon ? campeon.nombre : "—"}</span>
+              <button className="text-blue-600 font-bold whitespace-nowrap" onClick={() => setImagen(t)}>🖼️ Imagen</button>
+            </div>
+          );
+        })}
+        {ordenadas.length === 0 && <p className="p-4 text-center text-gray-400">Todavía no se cerró ninguna temporada</p>}
+      </div>
+      {imagen && <ImagenTemporada temporada={imagen} cerrada={!!imagen.recien} onClose={() => setImagen(null)} />}
+    </div>
+  );
+}
+
+// ============ PANEL ADMIN (con tabs) ============
+function PanelAdmin({ jugadores, partidos, temporadas = [], onSalir }) {
+  const [tab, setTab] = useState("jugadores");
+  return (
+    <div className="max-w-3xl mx-auto p-4">
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold text-[#1B4B7A]">Panel Admin</h1>
+        <button className="text-sm text-gray-500 underline" onClick={onSalir}>Salir</button>
+      </div>
+      <div className="flex flex-wrap gap-2 mb-4">
+        {[["jugadores", "Jugadores"], ["fechas", "Fechas / Sorteo"], ["resultados", "Resultados"], ["temporada", "Temporada"]].map(([k, label]) => (
+          <button key={k}
+            className={`px-3 py-2 rounded-lg text-sm font-bold ${tab === k ? "bg-[#3E7CB1] text-white" : "bg-white text-[#1B4B7A]"}`}
+            onClick={() => setTab(k)}>
+            {label}
+          </button>
+        ))}
+      </div>
+      {tab === "jugadores" && <AdminJugadores jugadores={jugadores} />}
+      {tab === "fechas" && <AdminFechas jugadores={jugadores} partidos={partidos} />}
+      {tab === "resultados" && <AdminResultados jugadores={jugadores} partidos={partidos} />}
+      {tab === "temporada" && <AdminTemporada jugadores={jugadores} partidos={partidos} temporadas={temporadas} />}
+    </div>
+  );
+}
+
+// ============ APP ============
+function App() {
+  const [jugadores, setJugadores] = useState([]);
+  const [partidos, setPartidos] = useState([]);
+  const [temporadas, setTemporadas] = useState([]);
+  const [vista, setVista] = useState("home"); // home | login | admin
+  const [logueado, setLogueado] = useState(false);
+
+  useEffect(() => {
+    db.ref("jugadores").on("value", snap => {
+      const val = snap.val() || {};
+      setJugadores(Object.entries(val).map(([id, v]) => ({ id, ...v })));
+    });
+    db.ref("partidos").on("value", snap => {
+      const val = snap.val() || {};
+      setPartidos(Object.entries(val).map(([id, v]) => ({ id, ...v })).filter(p => !p.archivada));
+    });
+    // Si las reglas de Firebase todavía no dejaban leer "temporadas", la conexión se
+    // cancela sola; acá se reintenta cada 5 segundos hasta que funcione.
+    const escucharTemporadas = () => {
+      db.ref("temporadas").on("value", snap => {
+        const val = snap.val() || {};
+        setTemporadas(Object.entries(val).map(([id, v]) => ({ id, ...v })));
+      }, () => { setTimeout(escucharTemporadas, 5000); });
+    };
+    escucharTemporadas();
+  }, []);
+
+  return (
+    <div className="min-h-screen pb-10">
+      <nav className="bg-[#12345C] text-white p-3 flex items-center justify-center gap-4">
+        <div className="bg-white rounded-md px-2 py-1"><img src={LOGO_EMU} alt="EMU SAIC" style={{ height: 22 }} /></div>
+        <button className="font-bold" onClick={() => setVista("home")}>Inicio</button>
+        <button className="font-bold" onClick={() => setVista(logueado ? "admin" : "login")}>Admin</button>
+      </nav>
+
+      {vista === "home" && <Home jugadores={jugadores} partidos={partidos} temporadas={temporadas} esAdmin={logueado} />}
+      {vista === "login" && <LoginAdmin onLogin={() => { setLogueado(true); setVista("admin"); }} />}
+      {vista === "admin" && logueado && (
+        <PanelAdmin jugadores={jugadores} partidos={partidos} temporadas={temporadas} onSalir={() => { setLogueado(false); setVista("home"); }} />
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
